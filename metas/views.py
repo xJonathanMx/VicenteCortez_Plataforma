@@ -5,6 +5,7 @@ from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -15,7 +16,7 @@ from core.models import Usuario
 from core.permisos import privilegio_requerido
 
 from . import servicios as ms
-from .models import MetaMensual, NivelIncentivo
+from .models import IncentivoMeta, MetaMensual, NivelIncentivo
 
 
 class PeriodoForm(FormEstilo):
@@ -80,30 +81,54 @@ def panel(request):
 
 @privilegio_requerido("gestionar_metas")
 @require_POST
+@transaction.atomic
 def guardar_metas(request):
-    """RF-CI-09 / RF-PA-11."""
+    """RF-CI-09 / RF-PA-11: meta de atenciones y lista de incentivos de cada peluquero."""
     mes, anio = int(request.POST["mes"]), int(request.POST["anio"])
-    n = 0
+    n, errores = 0, []
     for p in Usuario.objects.filter(is_active=True, roles__codigo="peluquero").distinct():
-        meta_txt = request.POST.get(f"meta_{p.pk}", "").strip()
-        base_txt = re.sub(r"\D", "", request.POST.get(f"base_{p.pk}", ""))  # acepta "80.000" o "$80.000"
-        premio = request.POST.get(f"premio_{p.pk}", "").strip()[:120]
+        meta_txt = re.sub(r"\D", "", request.POST.get(f"meta_{p.pk}", ""))
         if not meta_txt:
             continue
         existente = MetaMensual.objects.filter(peluquero=p, mes=mes, anio=anio).first()
         if existente and existente.cerrada:
             continue
-        try:
-            meta, base = int(re.sub(r"\D", "", meta_txt)), int(base_txt or 0)
-        except ValueError:
-            messages.error(request, f"Revisa los números de {p.nombre_corto}.")
+        incentivos, error = leer_incentivos(request.POST, p.pk)
+        if error:
+            errores.append(f"{p.nombre_corto}: {error}")
             continue
-        MetaMensual.objects.update_or_create(peluquero=p, mes=mes, anio=anio,
-                                             defaults={"meta_cliente": max(meta, 1), "incentivo_base": base,
-                                                       "premio": premio})
+        total_dinero = sum(i["monto"] or 0 for i in incentivos if i["tipo"] == "dinero")
+        meta, _ = MetaMensual.objects.update_or_create(
+            peluquero=p, mes=mes, anio=anio,
+            defaults={"meta_cliente": max(int(meta_txt), 1), "incentivo_base": total_dinero})
+        meta.incentivos.all().delete()
+        IncentivoMeta.objects.bulk_create(IncentivoMeta(meta=meta, **i) for i in incentivos)
         n += 1
-    messages.success(request, f"Metas guardadas para {n} peluquero{'s' if n != 1 else ''}.")
+    for e in errores:
+        messages.error(request, e)
+    if n:
+        messages.success(request, f"Metas guardadas para {n} peluquero{'s' if n != 1 else ''}.")
     return redirect(f"{reverse('metas:panel')}?mes={anio}-{mes}")
+
+
+def leer_incentivos(datos, run):
+    """Lee las filas «tipo / descripción / monto» de un peluquero. Las filas vacías se ignoran."""
+    tipos = datos.getlist(f"inc_{run}_tipo")
+    descripciones = datos.getlist(f"inc_{run}_desc")
+    montos = datos.getlist(f"inc_{run}_monto")
+    validos = dict(IncentivoMeta.TIPOS)
+    salida = []
+    for tipo, desc, monto_txt in zip(tipos, descripciones, montos):
+        desc = desc.strip()[:120]
+        monto = int(re.sub(r"\D", "", monto_txt)) if re.sub(r"\D", "", monto_txt) else None
+        if tipo not in validos or (not desc and not monto):
+            continue
+        if tipo == "dinero" and not monto:
+            return [], "un incentivo en dinero necesita un monto."
+        if tipo != "dinero" and not desc:
+            return [], f"describe el {validos[tipo].lower()} (ej. kit de productos)."
+        salida.append({"tipo": tipo, "descripcion": desc, "monto": monto if tipo == "dinero" else None})
+    return salida, None
 
 
 @privilegio_requerido("gestionar_metas")

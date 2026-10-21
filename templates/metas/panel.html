@@ -8,25 +8,76 @@
     <select class="form-select" id="mes" name="mes" onchange="this.form.submit()">{% for v, t in meses %}<option value="{{ v }}" {% if v == mes_sel %}selected{% endif %}>{{ t }}</option>{% endfor %}</select></form>
 </div>
 
-<section class="tarjeta mb-4">
-  <div class="tarjeta-titulo"><h2>Metas de {{ nombre_mes }}</h2>{% if cerrado %}<span class="estado">Mes cerrado</span>{% endif %}</div>
-  <form method="post" action="{% url 'metas:guardar' %}">{% csrf_token %}
+<section class="mb-4">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <h2 class="m-0">Metas de {{ nombre_mes }}</h2>
+    {% if cerrado %}<span class="estado">Mes cerrado: los resultados están congelados</span>{% endif %}
+  </div>
+  <p class="text-apagado small" style="max-width:70ch">Para cada peluquero define cuántas atenciones debe lograr y qué recibe. Puedes agregar varios incentivos:
+    <strong>dinero</strong> (se informa proporcional al avance, según la escala de abajo) o un <strong>regalo o beneficio</strong> (se gana al cumplir el 100%).</p>
+
+  <form method="post" action="{% url 'metas:guardar' %}" data-guardable>{% csrf_token %}
     <input type="hidden" name="mes" value="{{ mes }}"><input type="hidden" name="anio" value="{{ anio }}">
-    <div class="tabla-scroll"><table class="tabla apilable">
-      <thead><tr><th>Peluquero</th><th>Meta (atenciones)</th><th>Incentivo base ($)</th><th>Premio o regalo</th><th>Avance</th><th class="num">Incentivo</th></tr></thead>
-      <tbody>{% for f in filas %}<tr>
-        <td data-label="Peluquero" class="fw-semibold">{{ f.p.nombre_corto }}</td>
-        <td data-label="Meta"><input class="form-control" style="min-width:80px;max-width:110px" name="meta_{{ f.p.pk }}" inputmode="numeric" value="{{ f.meta.meta_cliente|default_if_none:'' }}" {% if f.meta.cerrada or not gestiona %}disabled{% endif %} aria-label="Meta de {{ f.p.nombre_corto }}"></td>
-        <td data-label="Incentivo base"><input class="form-control" style="min-width:120px;max-width:150px" name="base_{{ f.p.pk }}" inputmode="numeric" value="{{ f.meta.incentivo_base|default_if_none:'' }}" {% if f.meta.cerrada or not gestiona %}disabled{% endif %} aria-label="Incentivo base de {{ f.p.nombre_corto }}"></td>
-        <td data-label="Premio"><input class="form-control" style="min-width:160px" name="premio_{{ f.p.pk }}" maxlength="120" value="{{ f.meta.premio|default:'' }}" placeholder="Opcional" {% if f.meta.cerrada or not gestiona %}disabled{% endif %} aria-label="Premio de {{ f.p.nombre_corto }}"></td>
-        <td data-label="Avance" style="min-width:170px">{% if f.avance %}<div class="d-flex align-items-center gap-2"><div class="barra-progreso flex-grow-1"><span style="width: {{ f.avance.barra }}%"></span></div><span class="small tabular">{{ f.avance.logradas }}/{{ f.meta.meta_cliente }}</span></div>{% else %}<span class="small text-apagado">Sin meta</span>{% endif %}</td>
-        <td data-label="Incentivo" class="num">{% if f.avance %}{{ f.avance.incentivo|pesos }}{% if f.meta.premio %}<div class="small text-apagado">{% if f.avance.cumplida %}+ {{ f.meta.premio }}{% else %}Premio al cumplir{% endif %}</div>{% endif %}{% else %}—{% endif %}</td>
-      </tr>{% endfor %}</tbody>
-    </table></div>
-    {% if gestiona and not cerrado %}<button class="btn btn-negro mt-3">Guardar metas</button>{% endif %}
+    <div class="rejilla">
+    {% for f in filas %}
+      {% with editable=gestiona %}
+      <article class="tarjeta" style="margin:0">
+        <div class="d-flex align-items-center gap-3 mb-3">
+          <div class="avatar">{{ f.p.inicial }}</div>
+          <div class="flex-grow-1"><div class="fw-bold text-dark">{{ f.p.nombre_corto }}</div>
+            <div class="small text-apagado">{% if f.p.contrato %}Contrato {{ f.p.contrato|lower }}{% endif %}</div></div>
+          {% if f.avance %}<span class="estado {% if f.avance.cumplida %}ok{% endif %}">{{ f.avance.estado }}</span>{% endif %}
+        </div>
+
+        {% if f.avance %}
+          <div class="d-flex align-items-center gap-2 mb-3">
+            <div class="barra-progreso flex-grow-1"><span style="width: {{ f.avance.barra }}%"></span></div>
+            <span class="small tabular">{{ f.avance.logradas }} de {{ f.meta.meta_cliente }}</span>
+          </div>
+        {% endif %}
+
+        {% if f.meta.cerrada or not gestiona %}
+          <dl class="definiciones mb-0">
+            <dt>Meta</dt><dd>{{ f.meta.meta_cliente|default:"Sin meta" }}{% if f.meta %} atenciones{% endif %}</dd>
+            {% for i in f.avance.incentivos %}
+              <dt>{{ i.inc.get_tipo_display }}</dt>
+              <dd>{% if i.dinero %}{{ i.monto|pesos }}{% if i.inc.descripcion %} ({{ i.inc.descripcion }}){% endif %}, se informa {{ i.informado|pesos }}{% else %}{{ i.inc.descripcion }}{% if i.ganado %} <span class="estado ok">Ganado</span>{% endif %}{% endif %}</dd>
+            {% endfor %}
+          </dl>
+        {% else %}
+          <label class="form-label" for="meta_{{ f.p.pk }}">Meta de atenciones del mes</label>
+          <input class="form-control mb-3" style="max-width:160px" id="meta_{{ f.p.pk }}" name="meta_{{ f.p.pk }}" inputmode="numeric" value="{{ f.meta.meta_cliente|default_if_none:'' }}" placeholder="Ej. 25">
+
+          <div class="form-label">Incentivos</div>
+          <div class="lista-incentivos" data-incentivos="{{ f.p.pk }}">
+            {% for i in f.avance.incentivos %}
+              {% include "metas/_fila_incentivo.html" with run=f.p.pk tipo=i.inc.tipo desc=i.inc.descripcion monto=i.inc.monto %}
+            {% endfor %}
+          </div>
+          <button type="button" class="btn btn-relieve btn-sm mt-2" data-agregar-incentivo="{{ f.p.pk }}"><i data-lucide="plus"></i>Agregar incentivo</button>
+
+          {% if f.avance.incentivos %}
+            <p class="small text-apagado mt-3 mb-0">Con el avance actual se informa: <strong class="text-dark">{{ f.avance.incentivo|pesos }}</strong>{% for i in f.avance.incentivos %}{% if not i.dinero %}; {{ i.inc.descripcion }} {% if i.ganado %}(ganado){% else %}(al cumplir){% endif %}{% endif %}{% endfor %}.</p>
+          {% endif %}
+        {% endif %}
+      </article>
+      {% endwith %}
+    {% empty %}
+      <div class="tarjeta vacio"><i data-lucide="users"></i><div>No hay peluqueros activos.</div></div>
+    {% endfor %}
+    </div>
+    {% if gestiona and not cerrado %}
+      <div class="d-flex align-items-center gap-2 mt-4 flex-wrap">
+        <button class="btn btn-negro">Guardar metas</button>
+        <span class="estado alerta d-none" data-sin-guardar>Cambios sin guardar</span>
+      </div>
+    {% endif %}
   </form>
+
+  <template id="plantilla-incentivo">{% include "metas/_fila_incentivo.html" with run="__RUN__" tipo="dinero" %}</template>
+
   {% if gestiona and puede_cerrar and not cerrado %}
-    <form method="post" action="{% url 'metas:cerrar' %}" class="mt-3" data-confirmar="Al cerrar el mes, los resultados quedan congelados y no cambian aunque se corrijan fichas. ¿Cerrar {{ nombre_mes }}?">{% csrf_token %}
+    <form method="post" action="{% url 'metas:cerrar' %}" class="mt-3" data-confirmar="Al cerrar el mes, los resultados quedan congelados y no cambian aunque se corrijan fichas. ¿Cerrar {{ nombre_mes }}?" data-confirmar-si="Cerrar el mes">{% csrf_token %}
       <input type="hidden" name="mes" value="{{ mes }}"><input type="hidden" name="anio" value="{{ anio }}">
       <button class="btn btn-relieve"><i data-lucide="lock"></i>Cerrar {{ nombre_mes }}</button></form>
   {% endif %}
@@ -44,7 +95,7 @@
   </section>
   <section class="tarjeta">
     <h2 class="mb-2">Escala de incentivo</h2>
-    <p class="small text-apagado">Qué parte del incentivo base se informa según el cumplimiento.</p>
+    <p class="small text-apagado">Qué parte de los incentivos <strong>en dinero</strong> se informa según el cumplimiento. Los regalos y beneficios se ganan al llegar al 100%.</p>
     <form method="post" action="{% url 'metas:niveles' %}">{% csrf_token %}
       {% for n in niveles %}
         <div class="d-flex align-items-center gap-2 mb-2"><span class="flex-grow-1">Desde {{ n.porcentaje_minimo }}% de la meta</span>

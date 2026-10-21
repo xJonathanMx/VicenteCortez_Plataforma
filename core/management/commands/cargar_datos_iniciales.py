@@ -193,8 +193,11 @@ class Command(BaseCommand):
             fs.iniciar_servicio(det, admin)
 
         for p in peluqueros:
-            MetaMensual.objects.get_or_create(peluquero=p, mes=hoy.month, anio=hoy.year,
-                                              defaults={"meta_cliente": 25, "incentivo_base": 80000})
+            meta, nueva = MetaMensual.objects.get_or_create(peluquero=p, mes=hoy.month, anio=hoy.year,
+                                                            defaults={"meta_cliente": 25, "incentivo_base": 80000})
+            if nueva:
+                meta.incentivos.create(tipo="dinero", monto=80000)
+                meta.incentivos.create(tipo="regalo", descripcion="Kit de productos Kérastase")
         self.stdout.write(self.style.SUCCESS(
             f"Demo lista. Clave de todos: «{clave}». Administrador {admin.run_formateado}; "
             f"recepción {Usuario.objects.get(run='15555555').run_formateado}; "

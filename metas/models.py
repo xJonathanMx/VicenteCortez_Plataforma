@@ -22,10 +22,9 @@ class MetaMensual(models.Model):
     mes = models.PositiveSmallIntegerField("mes")
     anio = models.PositiveSmallIntegerField("año")
     meta_cliente = models.PositiveIntegerField("meta de atenciones")
-    incentivo_base = models.PositiveIntegerField("incentivo base ($)", default=0,
-                                                 help_text="Puede ser 0 si el incentivo es solo un premio.")
-    premio = models.CharField("premio o regalo", max_length=120, blank=True,
-                              help_text="Incentivo no monetario al cumplir la meta (ej. kit de productos).")
+    incentivo_base = models.PositiveIntegerField(
+        "incentivo en dinero ($)", default=0,
+        help_text="Suma de los incentivos en dinero de la lista; se calcula sola al guardar.")
     # Se congelan al cerrar el mes (RF-CI-13, RF-CI-15).
     cerrada = models.BooleanField(default=False)
     resultado_logrado = models.PositiveIntegerField("atenciones logradas", null=True, blank=True)
@@ -42,3 +41,25 @@ class MetaMensual(models.Model):
 
     def __str__(self):
         return f"Meta {self.mes:02d}/{self.anio} de {self.peluquero}"
+
+
+class IncentivoMeta(models.Model):
+    """Cada incentivo de la meta: dinero (proporcional al avance) o un regalo/beneficio (al cumplir)."""
+    TIPOS = [("dinero", "Dinero"), ("regalo", "Regalo o producto"), ("otro", "Otro beneficio")]
+
+    meta = models.ForeignKey(MetaMensual, on_delete=models.CASCADE, related_name="incentivos", db_column="id_meta")
+    tipo = models.CharField("tipo", max_length=10, choices=TIPOS)
+    descripcion = models.CharField("descripción", max_length=120, blank=True,
+                                   help_text="Ej. Kit de productos Kérastase, día libre.")
+    monto = models.PositiveIntegerField("monto ($)", null=True, blank=True)
+
+    class Meta:
+        db_table = "incentivo_meta"
+        ordering = ["id"]
+        verbose_name = "incentivo de la meta"
+        verbose_name_plural = "incentivos de la meta"
+
+    def __str__(self):
+        if self.tipo == "dinero":
+            return f"${self.monto or 0:,}".replace(",", ".") + (f" ({self.descripcion})" if self.descripcion else "")
+        return self.descripcion

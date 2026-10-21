@@ -367,3 +367,17 @@ a { color: var(--tinta); }
 .dialogo::backdrop { background: var(--velo); backdrop-filter: blur(2px); }
 .dialogo-texto { font-size: 1rem; line-height: 1.5; margin: 0 0 20px; color: var(--tinta); }
 .dialogo-botones { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+
+/* ---------- lista de incentivos de la meta ---------- */
+.lista-incentivos { display: grid; gap: 10px; container-type: inline-size; }
+.fila-incentivo { display: grid; grid-template-columns: 180px minmax(0, 1fr) 130px 42px; gap: 8px; align-items: center; }
+.fila-incentivo.sin-monto { grid-template-columns: 180px minmax(0, 1fr) 42px; }
+.fila-incentivo.sin-monto [data-monto-incentivo] { display: none; }
+/* Si la tarjeta es angosta (celular), el tipo va arriba y la descripción/monto abajo. */
+@container (max-width: 520px) {
+  .fila-incentivo, .fila-incentivo.sin-monto { grid-template-columns: minmax(0, 1fr) 42px; }
+  .fila-incentivo select { grid-column: 1; grid-row: 1; }
+  .fila-incentivo [data-quitar-incentivo] { grid-column: 2; grid-row: 1; }
+  .fila-incentivo [data-desc-incentivo], .fila-incentivo [data-monto-incentivo] { grid-column: 1 / -1; }
+  .fila-incentivo { padding-bottom: 10px; border-bottom: 1px solid var(--linea); }
+}

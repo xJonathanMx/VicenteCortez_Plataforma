@@ -168,7 +168,46 @@
     });
   }
 
+  // Lista de incentivos de la meta: agregar, quitar y mostrar el monto solo si es dinero
+  function incentivos() {
+    var plantilla = document.getElementById("plantilla-incentivo");
+    if (!plantilla) return;
+    var textos = { dinero: "Detalle (opcional)", regalo: "Ej. Kit de productos Kérastase", otro: "Ej. Día libre" };
+    function preparar(fila) {
+      var tipo = fila.querySelector("[data-tipo-incentivo]");
+      var desc = fila.querySelector("[data-desc-incentivo]");
+      var monto = fila.querySelector("[data-monto-incentivo]");
+      function ajustar() {
+        var esDinero = tipo.value === "dinero";
+        fila.classList.toggle("sin-monto", !esDinero);
+        if (!esDinero) monto.value = "";
+        desc.placeholder = textos[tipo.value];
+      }
+      tipo.addEventListener("change", ajustar);
+      fila.querySelector("[data-quitar-incentivo]").addEventListener("click", function () {
+        var form = fila.closest("form");
+        fila.remove();
+        if (form) form.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      ajustar();
+    }
+    document.querySelectorAll(".fila-incentivo").forEach(preparar);
+    document.querySelectorAll("[data-agregar-incentivo]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var run = b.dataset.agregarIncentivo;
+        var html = plantilla.innerHTML.split("__RUN__").join(run);
+        var lista = document.querySelector('[data-incentivos="' + run + '"]');
+        lista.insertAdjacentHTML("beforeend", html);
+        var fila = lista.lastElementChild;
+        preparar(fila);
+        iconos();
+        fila.querySelector("[data-tipo-incentivo]").focus();
+        b.closest("form").dispatchEvent(new Event("input", { bubbles: true }));
+      });
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
-    iconos(); tema(); guardables(); menu(); cronometros(); confirmaciones(); unEnvio(); sugerencias();
+    iconos(); tema(); guardables(); incentivos(); menu(); cronometros(); confirmaciones(); unEnvio(); sugerencias();
   });
 })();

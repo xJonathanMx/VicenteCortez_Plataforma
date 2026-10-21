@@ -54,10 +54,21 @@
         <span class="cifra">{{ mi_meta.logradas }}</span><span class="text-apagado pb-1">de {{ mi_meta.meta.meta_cliente }} atenciones</span>
       </div>
       <div class="barra-progreso mb-2"><span style="width: {{ mi_meta.barra }}%"></span></div>
-      <p class="small text-apagado mb-0">
-        {% if mi_meta.cumplida %}Meta cumplida. Incentivo informado: <strong class="text-dark">{{ mi_meta.incentivo|pesos }}</strong>{% if mi_meta.meta.premio %} y {{ mi_meta.meta.premio }}{% endif %}.
-        {% else %}Te faltan {{ mi_meta.faltan }} atenciones. Incentivo según avance actual: {{ mi_meta.incentivo|pesos }}.{% if mi_meta.meta.premio %} Premio al cumplir: {{ mi_meta.meta.premio }}.{% endif %}{% endif %}
-      </p>
+      <p class="small text-apagado">{% if mi_meta.cumplida %}¡Meta cumplida!{% else %}Te faltan {{ mi_meta.faltan }} atenciones.{% endif %}</p>
+      {% if mi_meta.incentivos %}
+        <ul class="lista">
+          {% for i in mi_meta.incentivos %}
+            <li>
+              <i data-lucide="{% if i.dinero %}banknote{% elif i.inc.tipo == 'regalo' %}gift{% else %}star{% endif %}"></i>
+              <div class="flex-grow-1">
+                <div class="fw-semibold text-dark">{% if i.dinero %}{{ i.monto|pesos }} en dinero{% else %}{{ i.inc.descripcion }}{% endif %}</div>
+                <div class="small text-apagado">{% if i.dinero %}{% if i.inc.descripcion %}{{ i.inc.descripcion }}. {% endif %}Según tu avance hoy: {{ i.informado|pesos }}{% else %}{{ i.inc.get_tipo_display }}, se gana al cumplir la meta{% endif %}</div>
+              </div>
+              {% if i.ganado %}<span class="estado ok">Ganado</span>{% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}<p class="small text-apagado mb-0">Sin incentivos definidos para este mes.</p>{% endif %}
       <a class="btn btn-relieve btn-sm mt-3" href="{% url 'metas:mias' %}">Ver historial y comisiones</a>
     {% else %}
       <div class="vacio"><i data-lucide="target"></i><div>Administración aún no define tu meta de este mes.</div></div>

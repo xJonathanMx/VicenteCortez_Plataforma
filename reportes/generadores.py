@@ -93,8 +93,8 @@ def r_metas(f):
             continue
         a = ms.avance(m)
         filas.append([f"{m.mes:02d}/{m.anio}", m.peluquero.nombre_corto, m.meta_cliente, a["logradas"],
-                      f"{a['porcentaje']:.0f}%", a["incentivo"], m.premio or "", a["estado"]])
-    return {"columnas": ["Mes", "Peluquero", "Meta", "Logradas", "Avance", "Incentivo", "Premio", "Estado"], "filas": filas,
+                      f"{a['porcentaje']:.0f}%", a["incentivo"], ", ".join(i["inc"].descripcion for i in a["incentivos"] if not i["dinero"]), a["estado"]])
+    return {"columnas": ["Mes", "Peluquero", "Meta", "Logradas", "Avance", "Incentivo en dinero", "Regalos o beneficios", "Estado"], "filas": filas,
             "moneda": [5]}
 
 

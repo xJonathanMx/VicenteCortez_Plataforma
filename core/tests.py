@@ -236,23 +236,44 @@ class GiftcardTests(Base):
 
 
 class MetasTests(Base):
-    def test_guardar_metas_con_premio_e_incentivo_cero(self):
-        """Regresión: el año 2026 llegaba como '2 026' y el guardado fallaba."""
+    def test_guardar_metas_con_lista_de_incentivos(self):
+        """Regresión del año '2 026' + lista de incentivos (dinero y regalos)."""
         from metas.models import MetaMensual
+        from metas.servicios import avance
         self.entrar(self.admin)
         hoy = timezone.localdate()
         r = self.client.get(reverse("metas:panel"))
         self.assertContains(r, f'name="anio" value="{hoy.year}"')
+        run = self.pelu.pk
         r = self.client.post(reverse("metas:guardar"), {
-            "mes": hoy.month, "anio": hoy.year,
-            f"meta_{self.pelu.pk}": "30", f"base_{self.pelu.pk}": "$80.000", f"premio_{self.pelu.pk}": "Kit Kérastase",
-            "meta_17777777": "20", "base_17777777": "0", "premio_17777777": "Día libre"})
+            "mes": hoy.month, "anio": hoy.year, f"meta_{run}": "30",
+            f"inc_{run}_tipo": ["dinero", "regalo", "otro", "dinero"],
+            f"inc_{run}_desc": ["Bono", "Kit Kérastase", "Día libre", ""],
+            f"inc_{run}_monto": ["$80.000", "", "", ""],  # la última fila vacía se ignora
+            "meta_17777777": "20"})  # meta sin incentivos
         self.assertEqual(r.status_code, 302)
         m = MetaMensual.objects.get(peluquero=self.pelu, mes=hoy.month, anio=hoy.year)
-        self.assertEqual((m.meta_cliente, m.incentivo_base, m.premio), (30, 80000, "Kit Kérastase"))
+        self.assertEqual(m.meta_cliente, 30)
+        self.assertEqual(m.incentivo_base, 80000)
+        self.assertEqual(list(m.incentivos.values_list("tipo", "descripcion", "monto")),
+                         [("dinero", "Bono", 80000), ("regalo", "Kit Kérastase", None), ("otro", "Día libre", None)])
+        a = avance(m)
+        self.assertTrue(isinstance(a["barra"], int))
+        self.assertEqual(len(a["incentivos"]), 3)
         m2 = MetaMensual.objects.get(peluquero_id="17777777", mes=hoy.month, anio=hoy.year)
-        self.assertEqual((m2.incentivo_base, m2.premio), (0, "Día libre"))
+        self.assertEqual((m2.incentivo_base, m2.incentivos.count()), (0, 0))
 
+    def test_regalo_sin_descripcion_da_error(self):
+        from metas.models import MetaMensual
+        self.entrar(self.admin)
+        hoy = timezone.localdate()
+        run = self.pelu.pk
+        antes = MetaMensual.objects.get(peluquero=self.pelu, mes=hoy.month, anio=hoy.year).incentivos.count()
+        r = self.client.post(reverse("metas:guardar"), {
+            "mes": hoy.month, "anio": hoy.year, f"meta_{run}": "30",
+            f"inc_{run}_tipo": ["regalo"], f"inc_{run}_desc": [""], f"inc_{run}_monto": ["5000"]}, follow=True)
+        self.assertContains(r, "describe el regalo o producto")
+        self.assertEqual(MetaMensual.objects.get(peluquero=self.pelu, mes=hoy.month, anio=hoy.year).incentivos.count(), antes)
 
 class UsuarioFormTests(Base):
     def test_crear_peluquero_con_especialidad_y_servicios(self):

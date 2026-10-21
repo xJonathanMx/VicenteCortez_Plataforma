@@ -1,0 +1,10 @@
+<div class="fila-incentivo">
+  <select class="form-select" name="inc_{{ run }}_tipo" aria-label="Tipo de incentivo" data-tipo-incentivo>
+    <option value="dinero" {% if tipo == "dinero" %}selected{% endif %}>Dinero</option>
+    <option value="regalo" {% if tipo == "regalo" %}selected{% endif %}>Regalo o producto</option>
+    <option value="otro" {% if tipo == "otro" %}selected{% endif %}>Otro beneficio</option>
+  </select>
+  <input class="form-control" name="inc_{{ run }}_desc" maxlength="120" value="{{ desc|default:'' }}" aria-label="Descripción del incentivo" data-desc-incentivo>
+  <input class="form-control" name="inc_{{ run }}_monto" inputmode="numeric" value="{{ monto|default_if_none:'' }}" placeholder="Monto $" aria-label="Monto del incentivo" data-monto-incentivo>
+  <button type="button" class="btn btn-relieve btn-icono" data-quitar-incentivo aria-label="Quitar incentivo" title="Quitar"><i data-lucide="x"></i></button>
+</div>

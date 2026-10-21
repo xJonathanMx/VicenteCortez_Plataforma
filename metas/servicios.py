@@ -52,11 +52,30 @@ def avance(meta, logradas=None):
             logradas = atenciones_del_mes(meta.mes, meta.anio, meta.peluquero)
         pct = round(logradas * 100 / meta.meta_cliente, 1) if meta.meta_cliente else 0
         incentivo = incentivo_para(pct, meta.incentivo_base)
+    cumplida = pct >= 100
     return {
         "meta": meta, "logradas": logradas, "porcentaje": pct, "incentivo": incentivo,
-        "cumplida": pct >= 100, "estado": "Cumplida" if pct >= 100 else ("Cerrada" if meta.cerrada else "En curso"),
-        "faltan": max(meta.meta_cliente - logradas, 0), "barra": min(pct, 100),
+        "cumplida": cumplida, "estado": "Cumplida" if cumplida else ("Cerrada" if meta.cerrada else "En curso"),
+        "faltan": max(meta.meta_cliente - logradas, 0),
+        # Entero: un decimal con coma ("32,0") dejaba la barra llena porque el CSS no lo entiende.
+        "barra": int(min(pct, 100)),
+        "incentivos": detalle_incentivos(meta, pct, cumplida),
     }
+
+
+def detalle_incentivos(meta, pct, cumplida):
+    """
+    Cada incentivo de la lista con lo que se informa hoy:
+    el dinero va proporcional al avance (escala), los regalos y beneficios se ganan al cumplir.
+    """
+    filas = []
+    for inc in meta.incentivos.all():
+        if inc.tipo == "dinero":
+            filas.append({"inc": inc, "dinero": True, "monto": inc.monto or 0,
+                          "informado": incentivo_para(pct, inc.monto or 0), "ganado": cumplida})
+        else:
+            filas.append({"inc": inc, "dinero": False, "ganado": cumplida})
+    return filas
 
 
 def avances_del_mes(mes, anio):

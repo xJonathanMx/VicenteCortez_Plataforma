@@ -9,8 +9,21 @@
     {% if actual %}
       <div class="d-flex align-items-end gap-2 mb-3"><span class="cifra">{{ actual.logradas }}</span><span class="text-apagado pb-1">de {{ actual.meta.meta_cliente }} atenciones ({{ actual.porcentaje|floatformat:0 }}%)</span></div>
       <div class="barra-progreso mb-3"><span style="width: {{ actual.barra }}%"></span></div>
-      <dl class="definiciones"><dt>Incentivo base</dt><dd>{{ actual.meta.incentivo_base|pesos }}</dd><dt>Incentivo según avance</dt><dd><strong>{{ actual.incentivo|pesos }}</strong></dd>
-        {% if actual.meta.premio %}<dt>Premio al cumplir</dt><dd>{{ actual.meta.premio }}{% if actual.cumplida %} <span class="estado ok">Ganado</span>{% endif %}</dd>{% endif %}</dl>
+      <div class="form-label mt-2">Tus incentivos</div>
+      {% if actual.incentivos %}
+        <ul class="lista">
+          {% for i in actual.incentivos %}
+            <li>
+              <i data-lucide="{% if i.dinero %}banknote{% elif i.inc.tipo == 'regalo' %}gift{% else %}star{% endif %}"></i>
+              <div class="flex-grow-1">
+                <div class="fw-semibold text-dark">{% if i.dinero %}{{ i.monto|pesos }} en dinero{% else %}{{ i.inc.descripcion }}{% endif %}</div>
+                <div class="small text-apagado">{% if i.dinero %}{% if i.inc.descripcion %}{{ i.inc.descripcion }}. {% endif %}Según tu avance hoy: {{ i.informado|pesos }}{% else %}{{ i.inc.get_tipo_display }}, se gana al cumplir la meta{% endif %}</div>
+              </div>
+              {% if i.ganado %}<span class="estado ok">Ganado</span>{% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}<p class="small text-apagado mb-0">Sin incentivos definidos para este mes.</p>{% endif %}
     {% else %}
       <div class="vacio"><i data-lucide="target"></i><div>Administración aún no define tu meta de este mes.</div></div>
     {% endif %}
@@ -43,7 +56,7 @@
     <tbody>{% for a in metas %}<tr>
       <td data-label="Mes">{{ a.meta.mes }}/{{ a.meta.anio }}</td><td data-label="Meta" class="num">{{ a.meta.meta_cliente }}</td>
       <td data-label="Logradas" class="num">{{ a.logradas }}</td><td data-label="Avance" class="num">{{ a.porcentaje|floatformat:0 }}%</td>
-      <td data-label="Incentivo" class="num">{{ a.incentivo|pesos }}{% if a.meta.premio and a.cumplida %}<div class="small text-apagado">+ {{ a.meta.premio }}</div>{% endif %}</td><td data-label="Estado"><span class="estado {% if a.cumplida %}ok{% endif %}">{{ a.estado }}</span>{% if a.meta.cerrada %} <span class="small text-apagado">mes cerrado</span>{% endif %}</td>
+      <td data-label="Incentivo" class="num">{{ a.incentivo|pesos }}{% for i in a.incentivos %}{% if not i.dinero and i.ganado %}<div class="small text-apagado">+ {{ i.inc.descripcion }}</div>{% endif %}{% endfor %}</td><td data-label="Estado"><span class="estado {% if a.cumplida %}ok{% endif %}">{{ a.estado }}</span>{% if a.meta.cerrada %} <span class="small text-apagado">mes cerrado</span>{% endif %}</td>
     </tr>{% empty %}<tr><td colspan="6" class="text-apagado">Sin metas registradas.</td></tr>{% endfor %}</tbody>
   </table></div>
 </section>

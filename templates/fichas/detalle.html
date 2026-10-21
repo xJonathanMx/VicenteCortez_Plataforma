@@ -60,7 +60,7 @@
 
   {% for d in servicios %}
   <article class="servicio-ficha tarjeta{% if d.estado == 'en_proceso' %} en-proceso{% endif %}" id="s{{ d.pk }}">
-    <div class="d-flex justify-content-between gap-3 flex-wrap">
+    <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
       <div>
         <h3 class="mb-1">{{ d.servicio.nombre }} <span class="text-apagado fw-normal">{{ d.get_variante_display }}</span></h3>
         <div class="small text-apagado">
@@ -82,11 +82,15 @@
         {% if d.peluquero_id == user.pk or cierra_otros %}
         <form method="post" action="{% url 'fichas:terminar' d.pk %}" class="mt-2">{% csrf_token %}
           <button class="btn btn-negro btn-tactil"><i data-lucide="square"></i>Terminar servicio</button></form>
+        {% else %}
+          <p class="aviso warning mt-2 mb-0"><i data-lucide="info"></i><span>Solo {{ d.peluquero.nombre_corto }} o administración puede terminar este servicio, desde su propia cuenta.</span></p>
         {% endif %}
       {% elif d.estado == "pendiente" %}
         {% if d.peluquero_id == user.pk or cierra_otros %}
         <form method="post" action="{% url 'fichas:iniciar' d.pk %}" class="mt-3">{% csrf_token %}
           <button class="btn btn-negro btn-tactil"><i data-lucide="play"></i>Iniciar servicio</button></form>
+        {% else %}
+          <p class="aviso warning mt-3 mb-0"><i data-lucide="info"></i><span>Solo {{ d.peluquero.nombre_corto }} o administración puede iniciar este servicio, desde su propia cuenta. Así el tiempo queda registrado por quien hace el trabajo.</span></p>
         {% endif %}
       {% endif %}
     {% endif %}

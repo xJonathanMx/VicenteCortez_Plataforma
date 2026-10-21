@@ -6,3 +6,5 @@ db.sqlite3
 staticfiles/
 .claude/
 CLAUDE.md
+node_modules/
+package-lock.json

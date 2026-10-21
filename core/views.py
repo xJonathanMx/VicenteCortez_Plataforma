@@ -143,10 +143,20 @@ def usuario_form(request, run=None):
         _guardar_relaciones(u, form)
         messages.success(request, f"Usuario {u.nombre_corto} guardado.")
         return redirect("core:usuario", run=u.run)
-    return render(request, "form.html", {
+    return render(request, "core/usuario_form.html", {
         "form": form, "titulo": f"Editar a {usuario.nombre_corto}" if usuario else "Nuevo usuario",
-        "subtitulo": "Datos personales, contrato, roles, especialidades y servicios que puede realizar.",
+        "grupos_servicios": _agrupar_servicios(form), "es_nuevo": usuario is None,
         "volver": reverse("core:usuario", args=[run]) if run else reverse("core:usuarios")})
+
+
+def _agrupar_servicios(form):
+    """Casillas de servicios agrupadas por tipo (Colorimetría, Corte...) para que se lean fácil."""
+    tipo_de = {s.pk: s.tipo.nombre for s in Servicio.objects.filter(activo=True).select_related("tipo")}
+    grupos = {}
+    for op in form["servicios_sel"]:
+        tipo = tipo_de.get(int(str(op.data["value"])), "Otros")
+        grupos.setdefault(tipo, []).append(op)
+    return sorted(grupos.items())
 
 
 @privilegio_requerido("gestionar_usuarios")

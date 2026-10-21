@@ -74,11 +74,11 @@ class UsuarioForm(ModelFormEstilo):
         Especialidad.objects.filter(activo=True), required=False, label="Especialidades",
         widget=forms.CheckboxSelectMultiple)
     especialidad_principal = forms.ModelChoiceField(Especialidad.objects.filter(activo=True), required=False,
-                                                    label="Especialidad principal")
+                                                    label="Especialidad principal", empty_label="Sin especialidad principal",
+                                                    help_text="En la que más destaca. Debe estar marcada arriba.")
     servicios_sel = forms.ModelMultipleChoiceField(
         Servicio.objects.filter(activo=True).select_related("tipo"), required=False,
-        label="Servicios habilitados", widget=forms.CheckboxSelectMultiple,
-        help_text="Solo podrá ser asignado a estos servicios.")
+        label="Servicios habilitados", widget=forms.CheckboxSelectMultiple)
     password1 = forms.CharField(label="Contraseña inicial", widget=forms.PasswordInput, required=False,
                                 help_text="Mínimo 8 caracteres. Déjala vacía al editar para no cambiarla.")
 
@@ -96,7 +96,10 @@ class UsuarioForm(ModelFormEstilo):
             self.fields[n].widget.attrs.update(col(6 if n != "ap_materno" else 6))
         self.fields["run_completo"].widget.attrs.update(col(6))
         self.fields["contrato"].required = True
-        self.fields["roles"].help_text = "Un usuario puede tener más de un rol (ej. peluquero y recepción)."
+        self.fields["roles"].label = "Roles"
+        self.fields["roles"].required = True
+        self.fields["roles"].error_messages["required"] = "Elige al menos un rol."
+        self.fields["servicios_sel"].label_from_instance = lambda s: s.nombre
         if self.instance.pk:
             self.fields["run_completo"].initial = self.instance.run_formateado
             self.fields["run_completo"].disabled = True

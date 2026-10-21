@@ -1,17 +1,23 @@
 <div class="{{ col|default:'col-12' }}{% if field.errors %} campo-error{% endif %} mb-1">
-  {% if field.field.widget.input_type == "checkbox" %}
+  {% if field.field.widget.allow_multiple_selected and field.field.widget.input_type == "checkbox" %}
+    {# Lista de casillas: título y ayuda arriba, opciones abajo #}
+    <fieldset>
+      <legend class="form-label mb-1">{{ field.label }}{% if not field.field.required %} <span class="text-apagado fw-normal">(opcional)</span>{% endif %}</legend>
+      {% if field.help_text %}<div class="form-text mt-0 mb-2">{{ field.help_text|safe }}</div>{% endif %}
+      <div class="opciones">
+        {% for op in field %}<label class="opcion">{{ op.tag }}<span>{{ op.choice_label }}</span></label>{% endfor %}
+      </div>
+    </fieldset>
+  {% elif field.field.widget.input_type == "checkbox" %}
     <div class="form-check mt-2">
       {{ field }}
       <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
     </div>
+    {% if field.help_text %}<div class="form-text">{{ field.help_text|safe }}</div>{% endif %}
   {% else %}
     <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}{% if not field.field.required %} <span class="text-apagado fw-normal">(opcional)</span>{% endif %}</label>
-    {% if field.field.widget.allow_multiple_selected and field.field.widget.input_type == "checkbox" %}
-      <div class="checks-multiples">{{ field }}</div>
-    {% else %}
-      {{ field }}
-    {% endif %}
+    {{ field }}
+    {% if field.help_text %}<div class="form-text">{{ field.help_text|safe }}</div>{% endif %}
   {% endif %}
-  {% if field.help_text %}<div class="form-text">{{ field.help_text|safe }}</div>{% endif %}
   {{ field.errors }}
 </div>

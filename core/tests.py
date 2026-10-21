@@ -250,3 +250,28 @@ class MetasTests(Base):
         self.assertEqual((m.meta_cliente, m.incentivo_base, m.premio), (30, 80000, "Kit Kérastase"))
         m2 = MetaMensual.objects.get(peluquero_id="17777777", mes=hoy.month, anio=hoy.year)
         self.assertEqual((m2.incentivo_base, m2.premio), (0, "Día libre"))
+
+
+class UsuarioFormTests(Base):
+    def test_crear_peluquero_con_especialidad_y_servicios(self):
+        from catalogo.models import UsuarioServicio
+        from core.models import Especialidad, Rol, TipoContrato
+        self.entrar(self.admin)
+        color = Especialidad.objects.get(nombre="Colorimetría")
+        servicios = list(Servicio.objects.filter(tipo__nombre="Colorimetría"))
+        r = self.client.post(reverse("core:usuario_nuevo"), {
+            "run_completo": rut.formatear("19999999"), "nombre": "Daniela", "ap_paterno": "Soto",
+            "correo": "daniela@vicentecortez.cl", "telefono": "+56911112222", "genero": "F",
+            "contrato": TipoContrato.objects.get(nombre="Externo").pk,
+            "roles": [Rol.objects.get(codigo="peluquero").pk],
+            "especialidades_sel": [color.pk], "especialidad_principal": color.pk,
+            "servicios_sel": [s.pk for s in servicios], "password1": "TijeraDorada2026"})
+        self.assertEqual(r.status_code, 302, r.content[:500])
+        u = Usuario.objects.get(run="19999999")
+        self.assertTrue(u.es_peluquero)
+        self.assertEqual(UsuarioServicio.objects.filter(usuario=u, activo=True).count(), len(servicios))
+
+    def test_rol_obligatorio(self):
+        self.entrar(self.admin)
+        r = self.client.post(reverse("core:usuario_nuevo"), {"run_completo": rut.formatear("19999999")})
+        self.assertContains(r, "Elige al menos un rol.")

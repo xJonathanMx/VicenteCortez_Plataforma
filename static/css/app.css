@@ -318,3 +318,22 @@ a { color: var(--tinta); }
 :root[data-theme="dark"] .cambiar-tema .icono-claro { display: none; }
 .tema-flotante { position: fixed; top: 16px; right: 16px; z-index: 10; }
 .sin-transicion *, .sin-transicion *::before, .sin-transicion *::after { transition: none !important; }
+
+/* ---------- opciones múltiples (roles, especialidades, servicios) ---------- */
+.opciones { display: flex; flex-wrap: wrap; gap: 8px; }
+.opcion {
+  display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 12px; cursor: pointer;
+  box-shadow: var(--relieve-s); font-size: .9rem; color: var(--tinta-2); user-select: none; min-height: 40px;
+}
+.opcion input { width: 16px; height: 16px; accent-color: var(--tinta); margin: 0; flex: none; }
+.opcion:has(input:checked) { background: var(--tinta); color: var(--sobre-tinta); box-shadow: 3px 4px 10px var(--sombra-acento); }
+.opcion:has(input:focus-visible) { outline: 2px solid var(--tinta); outline-offset: 3px; }
+.opcion .detalle { display: block; font-size: .76rem; opacity: .75; }
+
+.seccion-form { padding-top: 22px; margin-top: 22px; border-top: 1px solid var(--linea); }
+.seccion-form:first-of-type { border-top: 0; margin-top: 0; padding-top: 0; }
+.seccion-form > h2 { font-size: 1.1rem; margin-bottom: 4px; }
+.seccion-form > .explicacion { color: var(--apagado); font-size: .88rem; margin-bottom: 16px; max-width: 62ch; }
+.grupo-servicios + .grupo-servicios { margin-top: 16px; }
+.grupo-servicios .cabecera { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.grupo-servicios .cabecera strong { font-size: .9rem; color: var(--tinta); }

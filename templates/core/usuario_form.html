@@ -1,0 +1,100 @@
+{% extends "base.html" %}{% load vc %}
+{% block titulo %}{{ titulo }}{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>{{ titulo }}</h1><p>Completa cada sección. Lo que marques aquí define qué puede ver y hacer esta persona en el sistema.</p></div>
+  <a class="btn btn-relieve" href="{{ volver }}"><i data-lucide="arrow-left"></i>Volver</a>
+</div>
+
+<form method="post" class="tarjeta" style="max-width: 860px" novalidate>{% csrf_token %}
+  {% if form.errors %}<div class="aviso error"><i data-lucide="circle-alert"></i><div>Revisa los campos marcados en rojo.{% if form.non_field_errors %} {{ form.non_field_errors|join:" " }}{% endif %}</div></div>{% endif %}
+
+  <section class="seccion-form">
+    <h2>1. Datos personales</h2>
+    <p class="explicacion">El RUN es con lo que la persona inicia sesión. El correo se usa para recuperar la contraseña.</p>
+    <div class="row g-3">
+      {% campo form.run_completo "col-12 col-md-6" %}
+      {% campo form.genero "col-12 col-md-6" %}
+      {% campo form.nombre "col-12 col-md-4" %}
+      {% campo form.ap_paterno "col-12 col-md-4" %}
+      {% campo form.ap_materno "col-12 col-md-4" %}
+      {% campo form.correo "col-12 col-md-6" %}
+      {% campo form.telefono "col-12 col-md-6" %}
+    </div>
+  </section>
+
+  <section class="seccion-form">
+    <h2>2. Rol y acceso</h2>
+    <p class="explicacion">El rol decide qué pantallas ve. Se puede marcar más de uno si la persona cumple varias funciones (por ejemplo, un peluquero que también atiende recepción).</p>
+    <dl class="small mb-3" style="display:grid;grid-template-columns:max-content 1fr;gap:4px 12px">
+      <dt>Administrador</dt><dd class="mb-0 text-apagado">Acceso completo: usuarios, catálogo, metas, giftcards, valoraciones y reportes.</dd>
+      <dt>Recepción</dt><dd class="mb-0 text-apagado">Abre fichas, registra clientes y asigna peluquero.</dd>
+      <dt>Peluquero</dt><dd class="mb-0 text-apagado">Atiende servicios, ve solo a sus clientes y consulta su meta y comisiones.</dd>
+    </dl>
+    <div class="row g-3">
+      {% campo form.roles %}
+      {% campo form.contrato "col-12 col-md-6" %}
+      {% campo form.password1 "col-12 col-md-6" %}
+    </div>
+    <p class="form-text mt-2 mb-0">Tipo de contrato: <strong>Externo</strong> recibe comisión por servicio; <strong>Interno</strong> no.</p>
+  </section>
+
+  <section class="seccion-form">
+    <h2>3. Especialidades</h2>
+    <p class="explicacion">Las áreas en que esta persona se especializa. Cuando recepción asigna un servicio, el sistema sugiere primero a quienes tienen esa especialidad. Si no es peluquero, déjalo vacío.</p>
+    <div class="row g-3">
+      {% with f=form.especialidades_sel %}
+      <div class="col-12{% if f.errors %} campo-error{% endif %}">
+        <div class="opciones">{% for op in f %}<label class="opcion">{{ op.tag }}<span>{{ op.choice_label }}</span></label>{% endfor %}</div>
+        {{ f.errors }}
+      </div>
+      {% endwith %}
+      {% campo form.especialidad_principal "col-12 col-md-6" %}
+    </div>
+  </section>
+
+  <section class="seccion-form">
+    <h2>4. Servicios que puede realizar</h2>
+    <p class="explicacion">Solo se le podrán asignar en una ficha los servicios marcados aquí. Si no es peluquero, déjalo vacío.</p>
+    {% for tipo, opciones in grupos_servicios %}
+      <div class="grupo-servicios" data-grupo>
+        <div class="cabecera">
+          <strong>{{ tipo }}</strong>
+          <button type="button" class="btn btn-relieve btn-sm" data-marcar-grupo>Marcar todos</button>
+        </div>
+        <div class="opciones">{% for op in opciones %}<label class="opcion">{{ op.tag }}<span>{{ op.choice_label }}</span></label>{% endfor %}</div>
+      </div>
+    {% empty %}
+      <p class="text-apagado">Aún no hay servicios en el catálogo.</p>
+    {% endfor %}
+    {{ form.servicios_sel.errors }}
+  </section>
+
+  <div class="d-flex gap-2 mt-4 flex-wrap">
+    <button type="submit" class="btn btn-negro">{% if es_nuevo %}Crear usuario{% else %}Guardar cambios{% endif %}</button>
+    <a class="btn btn-relieve" href="{{ volver }}">Cancelar</a>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // "Marcar todos" por tipo de servicio; si ya están todos marcados, los desmarca.
+  document.querySelectorAll("[data-grupo]").forEach(function (g) {
+    var boton = g.querySelector("[data-marcar-grupo]");
+    var casillas = g.querySelectorAll("input[type=checkbox]");
+    function texto() {
+      var todos = Array.prototype.every.call(casillas, function (c) { return c.checked; });
+      boton.textContent = todos ? "Desmarcar todos" : "Marcar todos";
+      return todos;
+    }
+    boton.addEventListener("click", function () {
+      var marcar = !texto();
+      casillas.forEach(function (c) { c.checked = marcar; });
+      texto();
+    });
+    casillas.forEach(function (c) { c.addEventListener("change", texto); });
+    texto();
+  });
+</script>
+{% endblock %}

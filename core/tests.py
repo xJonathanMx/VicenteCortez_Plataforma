@@ -19,6 +19,7 @@ from clientes.models import Cliente
 from core import rut
 from core.models import Usuario
 from fichas import servicios as fs
+from fichas.models import DetalleAtencionServicio  # noqa: F401
 from fichas.models import FichaAtencion
 from seguimiento.models import Valoracion
 from seguimiento.servicios import procesar_pendientes
@@ -168,7 +169,8 @@ class FichaTests(Base):
     def test_botones_por_web(self):
         ficha, d = self.nueva_ficha("Corte dama")
         self.entrar(self.pelu)
-        self.client.post(reverse("fichas:iniciar", args=[d.pk]))
+        # Andrea ya tiene otro servicio en curso en los datos demo: se confirma el inicio simultáneo.
+        self.client.post(reverse("fichas:iniciar", args=[d.pk]), {"confirmar": "1"})
         self.client.post(reverse("fichas:terminar", args=[d.pk]))
         self.client.post(reverse("fichas:cerrar", args=[ficha.pk]))
         ficha.refresh_from_db()
@@ -275,3 +277,30 @@ class UsuarioFormTests(Base):
         self.entrar(self.admin)
         r = self.client.post(reverse("core:usuario_nuevo"), {"run_completo": rut.formatear("19999999")})
         self.assertContains(r, "Elige al menos un rol.")
+
+
+class SimultaneosTests(Base):
+    def test_pide_confirmacion_si_hay_otro_en_curso(self):
+        f1 = fs.abrir_ficha(self.admin, self.cliente)
+        d1 = fs.agregar_servicio(f1, Servicio.objects.get(nombre="Balayage"), self.pelu, "basico", self.admin)
+        d2 = fs.agregar_servicio(f1, Servicio.objects.get(nombre="Corte dama"), self.pelu, "basico", self.admin)
+        fs.iniciar_servicio(d1, self.pelu)
+        self.entrar(self.pelu)
+        self.client.post(reverse("fichas:iniciar", args=[d2.pk]), {"confirmar": ""})
+        d2.refresh_from_db()
+        self.assertEqual(d2.estado, "pendiente")  # no inicia sin confirmar
+        self.client.post(reverse("fichas:iniciar", args=[d2.pk]), {"confirmar": "1"})
+        d2.refresh_from_db()
+        self.assertEqual(d2.estado, "en_proceso")  # confirmado: se permite en paralelo
+
+    def test_sin_otros_inicia_directo(self):
+        from catalogo.models import UsuarioServicio
+        carla = Usuario.objects.get(run="18888888")
+        fs.DetalleAtencionServicio.objects.filter(peluquero=carla, estado="en_proceso").update(estado="terminado")
+        f = fs.abrir_ficha(self.admin, self.cliente)
+        d = fs.agregar_servicio(f, Servicio.objects.get(nombre="Corte dama"), carla, "basico", self.admin)
+        self.assertEqual(fs.aviso_simultaneo(d), "")
+        self.entrar(carla)
+        self.client.post(reverse("fichas:iniciar", args=[d.pk]))
+        d.refresh_from_db()
+        self.assertEqual(d.estado, "en_proceso")

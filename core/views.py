@@ -46,6 +46,8 @@ def inicio(request):
                                 .filter(peluquero=u, estado__in=["pendiente", "en_proceso"],
                                         ficha__estado__in=["abierta", "en_atencion"])
                                 .select_related("servicio", "ficha__cliente").order_by("-estado", "creado_en"))
+        from fichas.views import _con_aviso
+        ctx["mis_servicios"] = _con_aviso(ctx["mis_servicios"])
         from metas.models import MetaMensual
         from metas.servicios import avance
         meta = MetaMensual.objects.filter(peluquero=u, mes=hoy.month, anio=hoy.year).first()

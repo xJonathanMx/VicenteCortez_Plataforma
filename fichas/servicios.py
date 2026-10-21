@@ -87,6 +87,24 @@ def _puede_operar(detalle, usuario):
         raise PermissionDenied("Solo el peluquero a cargo puede iniciar o terminar este servicio.")
 
 
+def otros_en_curso(peluquero, excluir=None):
+    """Servicios que el peluquero ya tiene en proceso (puede ser válido: tiempos de espera de productos)."""
+    qs = (DetalleAtencionServicio.objects.filter(peluquero=peluquero, estado="en_proceso")
+          .select_related("servicio", "ficha__cliente").order_by("hora_inicio"))
+    return list(qs.exclude(pk=excluir.pk) if excluir else qs)
+
+
+def aviso_simultaneo(detalle):
+    """Texto de confirmación si el peluquero ya tiene otro servicio en curso; vacío si no."""
+    otros = otros_en_curso(detalle.peluquero, detalle)
+    if not otros:
+        return ""
+    lista = "; ".join(f"{o.servicio.nombre} con {o.ficha.nombre_cliente} desde las "
+                      f"{timezone.localtime(o.hora_inicio):%H:%M}" for o in otros)
+    return (f"{detalle.peluquero.nombre_corto} ya tiene en proceso: {lista}. "
+            f"¿Iniciar {detalle.servicio.nombre} de todas formas?")
+
+
 @transaction.atomic
 def iniciar_servicio(detalle, usuario):
     """RF-ES-01 / RF-ES-03."""

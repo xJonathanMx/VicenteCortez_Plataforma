@@ -93,7 +93,7 @@ def detalle(request, pk):
                  .prefetch_related("insumos__insumo"))
     u = request.user
     ctx = {
-        "f": ficha, "servicios": servicios,
+        "f": ficha, "servicios": _con_aviso(servicios),
         "puede_editar": ficha.editable and (u.tiene_privilegio("abrir_fichas")),
         "historial": ficha.historial.select_related("estado", "estado_anterior", "usuario"),
         "versiones": ficha.versiones.select_related("usuario"),
@@ -150,6 +150,14 @@ def agregar_servicio(request, pk):
     return redirect("fichas:detalle", pk=pk)
 
 
+def _con_aviso(servicios):
+    """Agrega a cada servicio pendiente el aviso de servicios simultáneos para la confirmación."""
+    servicios = list(servicios)
+    for s in servicios:
+        s.aviso_simultaneo = fs.aviso_simultaneo(s) if s.estado == "pendiente" else ""
+    return servicios
+
+
 def _detalle(request, pk):
     d = get_object_or_404(DetalleAtencionServicio.objects.select_related("ficha", "servicio"), pk=pk)
     ficha_visible(request, d.ficha_id)
@@ -164,6 +172,10 @@ def _volver(request, d):
 @require_POST
 def iniciar(request, pk):
     d = _detalle(request, pk)
+    aviso = fs.aviso_simultaneo(d)
+    if aviso and request.POST.get("confirmar") != "1":
+        messages.warning(request, aviso + " Vuelve a tocar «Iniciar servicio» y confirma.")
+        return _volver(request, d)
     try:
         fs.iniciar_servicio(d, request.user)
         messages.success(request, f"{d.servicio.nombre} iniciado a las {timezone.localtime():%H:%M}.")

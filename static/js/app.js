@@ -38,18 +38,49 @@
     setInterval(pintar, 1000);
   }
 
-  // Confirmación simple antes de acciones irreversibles
+  // Diálogo de confirmación con el estilo del sistema (reemplaza al confirm() del navegador)
+  function dialogo(texto, textoSi, alAceptar) {
+    var d = document.createElement("dialog");
+    d.className = "dialogo";
+    d.innerHTML = '<p class="dialogo-texto"></p><div class="dialogo-botones">' +
+      '<button type="button" class="btn btn-relieve" data-no>Cancelar</button>' +
+      '<button type="button" class="btn btn-negro" data-si></button></div>';
+    d.querySelector(".dialogo-texto").textContent = texto;
+    d.querySelector("[data-si]").textContent = textoSi || "Confirmar";
+    function cerrar() { d.close(); d.remove(); }
+    d.querySelector("[data-no]").addEventListener("click", cerrar);
+    d.addEventListener("cancel", function () { d.remove(); });
+    d.querySelector("[data-si]").addEventListener("click", function () { cerrar(); alAceptar(); });
+    document.body.appendChild(d);
+    d.showModal();
+    d.querySelector("[data-si]").focus();
+  }
+
+  // Formularios o botones con data-confirmar="texto" piden confirmación antes de enviarse.
+  // Si el texto está vacío, se envían directo (ej. iniciar servicio sin otros en curso).
   function confirmaciones() {
-    document.querySelectorAll("form[data-confirmar]").forEach(function (f) {
-      f.addEventListener("submit", function (e) { if (!confirm(f.dataset.confirmar)) e.preventDefault(); });
+    document.querySelectorAll("form").forEach(function (f) {
+      f.addEventListener("submit", function (e) {
+        var origen = (e.submitter && e.submitter.dataset.confirmar) ? e.submitter : f;
+        var texto = origen.dataset.confirmar;
+        if (!texto || f.dataset.confirmado) return;
+        e.preventDefault();
+        var boton = e.submitter;
+        dialogo(texto, origen.dataset.confirmarSi, function () {
+          var campo = f.querySelector('input[name="confirmar"]');
+          if (campo) campo.value = "1";
+          f.dataset.confirmado = "1";
+          if (f.requestSubmit) f.requestSubmit(boton); else f.submit();
+        });
+      });
     });
   }
 
   // Evita doble envío en conexiones lentas del salón
   function unEnvio() {
     document.querySelectorAll("form").forEach(function (f) {
-      f.addEventListener("submit", function () {
-        if (f.dataset.enviado) return;
+      f.addEventListener("submit", function (e) {
+        if (e.defaultPrevented || f.dataset.enviado) return;
         f.dataset.enviado = "1";
         setTimeout(function () {
           f.querySelectorAll("button[type=submit]").forEach(function (b) { b.disabled = true; });

@@ -37,7 +37,7 @@
           <form method="post" action="{% url 'fichas:terminar' d.pk %}">{% csrf_token %}<input type="hidden" name="volver" value="inicio">
             <button class="btn btn-negro btn-tactil"><i data-lucide="square"></i>Terminar servicio</button></form>
         {% else %}
-          <form method="post" action="{% url 'fichas:iniciar' d.pk %}" class="mt-3">{% csrf_token %}<input type="hidden" name="volver" value="inicio">
+          <form method="post" action="{% url 'fichas:iniciar' d.pk %}" class="mt-3" data-confirmar="{{ d.aviso_simultaneo }}" data-confirmar-si="Iniciar de todas formas">{% csrf_token %}<input type="hidden" name="confirmar" value=""><input type="hidden" name="volver" value="inicio">
             <button class="btn btn-negro btn-tactil"><i data-lucide="play"></i>Iniciar servicio</button></form>
         {% endif %}
         <a class="small d-inline-block mt-2" href="{% url 'fichas:detalle' d.ficha_id %}">Abrir ficha N° {{ d.ficha_id }}</a>

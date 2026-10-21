@@ -358,3 +358,12 @@ a { color: var(--tinta); }
 .opcion:has(input:checked) input[type=checkbox]::after { border-color: var(--tinta); }
 .opcion input[type=checkbox]:focus-visible, .form-check-input[type=checkbox]:focus-visible { outline: 2px solid var(--tinta); outline-offset: 2px; }
 .form-check-input[type=checkbox]:focus { box-shadow: var(--hundido-s); }
+
+/* ---------- diálogo de confirmación ---------- */
+.dialogo {
+  border: 0; border-radius: var(--radio-l); background: var(--bg); color: var(--tinta-2); padding: 24px;
+  box-shadow: var(--relieve); max-width: min(440px, calc(100vw - 32px)); width: 100%;
+}
+.dialogo::backdrop { background: var(--velo); backdrop-filter: blur(2px); }
+.dialogo-texto { font-size: 1rem; line-height: 1.5; margin: 0 0 20px; color: var(--tinta); }
+.dialogo-botones { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }

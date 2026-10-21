@@ -1,0 +1,15 @@
+{% extends "registration/base_publica.html" %}{% load vc %}
+{% block titulo %}Iniciar sesión{% endblock %}
+{% block publico %}
+<form method="post" novalidate>
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="aviso error"><i data-lucide="circle-alert"></i><div>{{ form.non_field_errors|join:" " }}</div></div>{% endif %}
+  <div class="row g-3">
+    {% campo form.username %}
+    {% campo form.password %}
+  </div>
+  <input type="hidden" name="next" value="{{ next }}">
+  <button class="btn btn-negro btn-tactil mt-4" type="submit">Ingresar</button>
+  <p class="text-center mt-3 mb-0"><a class="text-apagado" href="{% url 'password_reset' %}">Olvidé mi contraseña</a></p>
+</form>
+{% endblock %}

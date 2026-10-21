@@ -1,0 +1,49 @@
+{% extends "base.html" %}{% load vc %}
+{% block titulo %}Mis metas y comisiones{% endblock %}
+{% block contenido %}
+<div class="encabezado"><div><h1>Mis metas y comisiones</h1><p>Montos informativos: no corresponden a pagos ni a tu liquidación de sueldo.</p></div></div>
+
+<div class="rejilla rejilla-2 mb-4">
+  <section class="tarjeta">
+    <div class="tarjeta-titulo"><h2>Este mes</h2>{% if actual %}<span class="estado {% if actual.cumplida %}ok{% endif %}">{{ actual.estado }}</span>{% endif %}</div>
+    {% if actual %}
+      <div class="d-flex align-items-end gap-2 mb-3"><span class="cifra">{{ actual.logradas }}</span><span class="text-apagado pb-1">de {{ actual.meta.meta_cliente }} atenciones ({{ actual.porcentaje|floatformat:0 }}%)</span></div>
+      <div class="barra-progreso mb-3"><span style="width: {{ actual.barra }}%"></span></div>
+      <dl class="definiciones"><dt>Incentivo base</dt><dd>{{ actual.meta.incentivo_base|pesos }}</dd><dt>Incentivo según avance</dt><dd><strong>{{ actual.incentivo|pesos }}</strong></dd></dl>
+    {% else %}
+      <div class="vacio"><i data-lucide="target"></i><div>Administración aún no define tu meta de este mes.</div></div>
+    {% endif %}
+  </section>
+
+  <section class="tarjeta">
+    <h2 class="mb-3">Comisiones</h2>
+    {% if user.cobra_comision %}
+      <form class="filtros mb-3" method="get">
+        <div>{{ form.desde.label_tag }}{{ form.desde }}</div><div>{{ form.hasta.label_tag }}{{ form.hasta }}</div>
+        <div class="acciones-filtro"><button class="btn btn-relieve">Ver</button></div>
+      </form>
+      {% if comision %}
+        <div class="d-flex align-items-end gap-2 mb-2"><span class="cifra">{{ comision.comision|pesos }}</span></div>
+        <p class="small text-apagado">{{ comision.servicios }} servicios por {{ comision.ventas|pesos }} en el período.</p>
+        <details><summary class="small fw-semibold" style="cursor:pointer">Ver detalle</summary>
+          <ul class="lista mt-2">{% for d in comision.detalle %}<li class="small"><span>{{ d.hora_termino|date:"d-m" }}</span><span class="flex-grow-1">{{ d.servicio.nombre }} ({{ d.porc_comision_guardado|floatformat:"-2" }}% de {{ d.precio_cobrado|pesos }})</span><span class="tabular">{{ d.monto_comision|pesos }}</span></li>{% endfor %}</ul>
+        </details>
+      {% else %}<p class="text-apagado mb-0">Sin servicios con comisión en el período.</p>{% endif %}
+    {% else %}
+      <p class="text-apagado mb-0">Tu tipo de contrato no recibe comisión por servicio.</p>
+    {% endif %}
+  </section>
+</div>
+
+<section class="tarjeta">
+  <h2 class="mb-3">Historial de metas</h2>
+  <div class="tabla-scroll"><table class="tabla apilable">
+    <thead><tr><th>Mes</th><th class="num">Meta</th><th class="num">Logradas</th><th class="num">Avance</th><th class="num">Incentivo</th><th>Estado</th></tr></thead>
+    <tbody>{% for a in metas %}<tr>
+      <td data-label="Mes">{{ a.meta.mes }}/{{ a.meta.anio }}</td><td data-label="Meta" class="num">{{ a.meta.meta_cliente }}</td>
+      <td data-label="Logradas" class="num">{{ a.logradas }}</td><td data-label="Avance" class="num">{{ a.porcentaje|floatformat:0 }}%</td>
+      <td data-label="Incentivo" class="num">{{ a.incentivo|pesos }}</td><td data-label="Estado"><span class="estado {% if a.cumplida %}ok{% endif %}">{{ a.estado }}</span>{% if a.meta.cerrada %} <span class="small text-apagado">mes cerrado</span>{% endif %}</td>
+    </tr>{% empty %}<tr><td colspan="6" class="text-apagado">Sin metas registradas.</td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endblock %}

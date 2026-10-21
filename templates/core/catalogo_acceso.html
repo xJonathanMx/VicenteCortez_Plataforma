@@ -1,0 +1,26 @@
+{% extends "base.html" %}{% load vc %}
+{% block titulo %}{{ titulo }}{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>{{ titulo }}</h1><p>{{ ayuda }}</p></div>
+  {% puede "gestionar_roles" as edita %}
+  {% if edita %}<a class="btn btn-negro" href="{% url 'core:catalogo_acceso_nuevo' cual %}"><i data-lucide="plus"></i>Agregar</a>{% endif %}
+</div>
+<nav class="pestanas">{% for k, t in pestanas %}<a href="{% url 'core:catalogo_acceso' k %}" class="{% if k == cual %}activa{% endif %}">{{ t }}</a>{% endfor %}</nav>
+<div class="tarjeta">
+  {% for i in items %}
+    <div class="fila-lista">
+      <div class="flex-grow-1">
+        <div class="principal-texto">{{ i }}</div>
+        <div class="secundario">
+          {% if cual == "roles" %}{{ i.privilegios.count }} privilegios: {{ i.privilegios.all|join:", "|truncatechars:140 }}
+          {% elif cual == "privilegios" %}Código: {{ i.codigo }}
+          {% elif cual == "especialidades" %}{% if i.activo %}Activa{% else %}Inactiva{% endif %}
+          {% else %}{% if i.aplica_comision %}Recibe comisión{% else %}Sin comisión{% endif %}{% endif %}
+        </div>
+      </div>
+      {% if edita %}<a class="btn btn-relieve btn-sm" href="{% url 'core:catalogo_acceso_editar' cual i.pk %}">Editar</a>{% endif %}
+    </div>
+  {% empty %}<div class="vacio">Aún no hay registros.</div>{% endfor %}
+</div>
+{% endblock %}

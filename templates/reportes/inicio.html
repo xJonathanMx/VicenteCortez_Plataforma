@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block titulo %}Reportes{% endblock %}
+{% block contenido %}
+<div class="encabezado"><div><h1>Reportes</h1><p>Todos se filtran por fechas, peluquero y servicio, y se exportan a Excel o PDF.</p></div></div>
+<div class="rejilla rejilla-3">
+  {% for slug, titulo, desc in reportes %}
+    <a class="accion" href="{% url 'reportes:reporte' slug %}">
+      <span><span class="titulo d-block" style="font-size:1rem">{{ titulo }}</span><span class="sub">{{ desc }}</span></span>
+      <i data-lucide="chevron-right" class="chevron"></i>
+    </a>
+  {% endfor %}
+</div>
+{% endblock %}

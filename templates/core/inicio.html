@@ -1,0 +1,122 @@
+{% extends "base.html" %}{% load static vc %}
+{% block titulo %}Inicio{% endblock %}
+{% block contenido %}
+<div class="hero-logo"><img src="{% static 'img/logo.png' %}" alt="Vicente Cortez Peluquería"></div>
+
+<div class="acciones mb-5">
+  {% puede "abrir_fichas" as abre %}
+  {% if abre %}
+  <a class="accion" href="{% url 'fichas:nueva' %}">
+    <span class="icono-negro"><i data-lucide="user-plus"></i></span>
+    <span><span class="titulo d-block">Crear ficha</span><span class="sub">Registra la atención de un cliente</span></span>
+    <i data-lucide="chevron-right" class="chevron"></i>
+  </a>
+  {% endif %}
+  <a class="accion" href="{% url 'clientes:buscar' %}">
+    <span class="icono-negro"><i data-lucide="search"></i></span>
+    <span><span class="titulo d-block">Buscar cliente</span><span class="sub">Ve su ficha y sus atenciones</span></span>
+    <i data-lucide="chevron-right" class="chevron"></i>
+  </a>
+</div>
+
+{% if mis_servicios is not None %}
+<div class="rejilla rejilla-2 mb-4">
+  <section class="tarjeta">
+    <div class="tarjeta-titulo"><h2>Mis servicios de hoy</h2><span class="text-apagado small">{{ mis_servicios|length }} activos</span></div>
+    {% for d in mis_servicios %}
+      <div class="servicio-ficha{% if d.estado == 'en_proceso' %} en-proceso{% endif %}">
+        <div class="d-flex justify-content-between gap-2 align-items-start">
+          <div>
+            <div class="fw-bold text-dark">{{ d.servicio.nombre }} <span class="text-apagado fw-normal">{{ d.get_variante_display }}</span></div>
+            <div class="small text-apagado">{{ d.ficha.nombre_cliente }}</div>
+          </div>
+          <span class="estado {{ d.estado|clase_estado }}">{{ d.get_estado_display }}</span>
+        </div>
+        {% if d.estado == 'en_proceso' %}
+          <div class="cronometro my-2" data-desde="{{ d.hora_inicio|iso }}" data-estimado="{{ d.servicio.tiempo_estimado }}">0:00</div>
+          <form method="post" action="{% url 'fichas:terminar' d.pk %}">{% csrf_token %}<input type="hidden" name="volver" value="inicio">
+            <button class="btn btn-negro btn-tactil"><i data-lucide="square"></i>Terminar servicio</button></form>
+        {% else %}
+          <form method="post" action="{% url 'fichas:iniciar' d.pk %}" class="mt-3">{% csrf_token %}<input type="hidden" name="volver" value="inicio">
+            <button class="btn btn-negro btn-tactil"><i data-lucide="play"></i>Iniciar servicio</button></form>
+        {% endif %}
+        <a class="small d-inline-block mt-2" href="{% url 'fichas:detalle' d.ficha_id %}">Abrir ficha N° {{ d.ficha_id }}</a>
+      </div>
+    {% empty %}
+      <div class="vacio"><i data-lucide="coffee"></i><div>No tienes servicios asignados por ahora.</div></div>
+    {% endfor %}
+  </section>
+
+  <section class="tarjeta">
+    <div class="tarjeta-titulo"><h2>Mi meta del mes</h2>{% if mi_meta %}<span class="estado {% if mi_meta.cumplida %}ok{% endif %}">{{ mi_meta.estado }}</span>{% endif %}</div>
+    {% if mi_meta %}
+      <div class="d-flex align-items-end gap-2 mb-3">
+        <span class="cifra">{{ mi_meta.logradas }}</span><span class="text-apagado pb-1">de {{ mi_meta.meta.meta_cliente }} atenciones</span>
+      </div>
+      <div class="barra-progreso mb-2"><span style="width: {{ mi_meta.barra }}%"></span></div>
+      <p class="small text-apagado mb-0">
+        {% if mi_meta.cumplida %}Meta cumplida. Incentivo informado: <strong class="text-dark">{{ mi_meta.incentivo|pesos }}</strong>.
+        {% else %}Te faltan {{ mi_meta.faltan }} atenciones. Incentivo según avance actual: {{ mi_meta.incentivo|pesos }}.{% endif %}
+      </p>
+      <a class="btn btn-relieve btn-sm mt-3" href="{% url 'metas:mias' %}">Ver historial y comisiones</a>
+    {% else %}
+      <div class="vacio"><i data-lucide="target"></i><div>Administración aún no define tu meta de este mes.</div></div>
+    {% endif %}
+  </section>
+</div>
+{% endif %}
+
+{% if resumen %}
+<h2 class="mb-3">Resumen del día</h2>
+<div class="rejilla rejilla-4 mb-4">
+  <a class="tarjeta text-decoration-none" href="{% url 'fichas:lista' %}?desde=hoy"><div class="cifra">{{ resumen.atenciones_hoy }}</div><div class="cifra-label">Atenciones hoy</div></a>
+  <a class="tarjeta text-decoration-none" href="{% url 'fichas:lista' %}?estado=en_atencion"><div class="cifra">{{ resumen.en_curso }}</div><div class="cifra-label">Servicios en curso</div></a>
+  <a class="tarjeta text-decoration-none" href="{% url 'fichas:lista' %}?estado=cerrada"><div class="cifra">{{ resumen.por_validar }}</div><div class="cifra-label">Fichas por validar</div></a>
+  <a class="tarjeta text-decoration-none" href="{% url 'seguimiento:valoraciones' %}"><div class="cifra">{{ resumen.valoraciones_pendientes }}</div><div class="cifra-label">Valoraciones esperando respuesta</div></a>
+</div>
+
+<div class="rejilla rejilla-2">
+  <section class="tarjeta">
+    <div class="tarjeta-titulo"><h2>Equipo ahora</h2></div>
+    <ul class="lista">
+      {% for f in equipo %}
+        <li>
+          <div class="avatar">{{ f.usuario.inicial }}</div>
+          <div class="flex-grow-1">
+            <div class="fw-semibold text-dark">{{ f.usuario.nombre_corto }}</div>
+            {% for s in f.servicios %}<div class="small text-apagado">{{ s.servicio.nombre }} con {{ s.ficha.nombre_cliente }}{% if s.excedido %}, <span class="text-danger">excede el tiempo estimado</span>{% endif %}</div>{% endfor %}
+          </div>
+          <span class="estado {% if f.ocupado %}negro vivo{% else %}ok{% endif %}">{% if f.ocupado %}Ocupado{% else %}Disponible{% endif %}</span>
+        </li>
+      {% empty %}<li class="text-apagado">No hay peluqueros activos.</li>{% endfor %}
+    </ul>
+  </section>
+
+  <section class="tarjeta">
+    <div class="tarjeta-titulo"><h2>Alertas</h2></div>
+    {% if not excedidos and not fallidos and not por_vencer %}
+      <div class="vacio"><i data-lucide="circle-check"></i><div>Todo en orden. No hay alertas pendientes.</div></div>
+    {% endif %}
+    <ul class="lista">
+      {% for d in excedidos %}
+        <li><i data-lucide="timer" class="text-danger"></i>
+          <div class="flex-grow-1"><div class="fw-semibold text-dark">{{ d.servicio.nombre }} lleva {{ d.duracion_min|minutos }}</div>
+          <div class="small text-apagado">{{ d.peluquero.nombre_corto }}; estimado {{ d.servicio.tiempo_estimado|minutos }}</div></div>
+          <a class="btn btn-relieve btn-sm" href="{% url 'fichas:detalle' d.ficha_id %}">Revisar</a></li>
+      {% endfor %}
+      {% for f in fallidos %}
+        <li><i data-lucide="send" class="text-danger"></i>
+          <div class="flex-grow-1"><div class="fw-semibold text-dark">Envío fallido</div>
+          <div class="small text-apagado">{{ f.ultimo_error|truncatechars:80 }}</div></div>
+          <a class="btn btn-relieve btn-sm" href="{% url 'seguimiento:valoraciones' %}?estado=error">Revisar</a></li>
+      {% endfor %}
+      {% for b in por_vencer %}
+        <li><i data-lucide="gift"></i>
+          <div class="flex-grow-1"><div class="fw-semibold text-dark">{{ b.codigo }} vence el {{ b.fecha_vencimiento|date:"d-m-Y" }}</div>
+          <div class="small text-apagado">{% if b.saldo_actual is not None %}Giftcard de {{ b.beneficiario }}, saldo {{ b.saldo_actual|pesos }}{% else %}{{ b.promocion }} de {{ b.comprador }}{% endif %}</div></div></li>
+      {% endfor %}
+    </ul>
+  </section>
+</div>
+{% endif %}
+{% endblock %}

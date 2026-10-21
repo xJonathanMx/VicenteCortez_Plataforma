@@ -1,0 +1,227 @@
+{% extends "base.html" %}{% load vc %}
+{% block titulo %}Ficha N° {{ f.pk }}{% endblock %}
+{% block contenido %}
+{% puede "validar_fichas" as admin_fichas %}
+{% puede "cerrar_servicios" as cierra_otros %}
+<div class="encabezado">
+  <div>
+    <h1>Ficha N° {{ f.pk }} <span class="estado {{ f.estado_id|clase_estado }} align-middle">{{ f.estado }}</span></h1>
+    <p>Abierta por {{ f.abierta_por.nombre_corto }} el {{ f.fecha_hora_inicio|date:"d-m-Y \a \l\a\s H:i" }}{% if f.fecha_hora_termino %}; terminó a las {{ f.fecha_hora_termino|date:"H:i" }}{% endif %}{% if f.validada_por %}; validada por {{ f.validada_por.nombre_corto }}{% endif %}</p>
+  </div>
+  <a class="btn btn-relieve" href="{% url 'fichas:lista' %}"><i data-lucide="arrow-left"></i>Historial</a>
+</div>
+
+{% if f.estado_id == "anulada" %}<div class="aviso error"><i data-lucide="ban"></i><div>Ficha anulada: {{ f.motivo_anulacion }}</div></div>{% endif %}
+
+<div class="rejilla rejilla-2 mb-4">
+  <section class="tarjeta">
+    <h2 class="mb-3">Cliente</h2>
+    {% if f.cliente %}
+      <a class="fila-lista p-0 border-0" href="{% url 'clientes:detalle' f.cliente.run %}">
+        <div class="avatar">{{ f.cliente.inicial }}</div>
+        <div class="flex-grow-1"><div class="principal-texto">{{ f.cliente.nombre_completo }}</div>
+          <div class="secundario">{{ f.cliente.run_formateado }}{% if f.cliente.estilista_fijo %}, estilista fijo {{ f.cliente.estilista_fijo.nombre_corto }}{% endif %}</div></div>
+        <i data-lucide="chevron-right" class="text-apagado"></i>
+      </a>
+    {% else %}
+      <p class="mb-2"><strong>{{ f.nombre_cliente }}</strong> <span class="text-apagado">(sin vincular)</span></p>
+      <form method="post" action="{% url 'fichas:vincular' f.pk %}" class="d-flex gap-2 align-items-end" novalidate>{% csrf_token %}
+        <div class="flex-grow-1">{% campo vincular_form.cliente %}</div>
+        <button class="btn btn-negro mb-1">Vincular</button>
+      </form>
+      <a class="small" href="{% url 'clientes:nuevo' %}">Registrar al cliente</a>
+    {% endif %}
+  </section>
+
+  <section class="tarjeta">
+    <h2 class="mb-3">Diagnóstico inicial</h2>
+    {% if puede_editar %}
+      <form method="post" action="{% url 'fichas:notas' f.pk %}">{% csrf_token %}
+        <div class="row g-3">{% campo notas_form.diagnostico %}{% campo notas_form.observaciones %}</div>
+        <button class="btn btn-relieve btn-sm mt-3">Guardar</button>
+      </form>
+    {% else %}
+      <p class="mb-2">{{ f.diagnostico|default:"Sin diagnóstico registrado."|linebreaksbr }}</p>
+      {% if f.observaciones %}<p class="small text-apagado mb-0">{{ f.observaciones|linebreaksbr }}</p>{% endif %}
+    {% endif %}
+  </section>
+</div>
+
+<section class="mb-4">
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h2 class="m-0">Servicios</h2>
+    <span class="fw-bold tabular">Total {{ f.total|pesos }}</span>
+  </div>
+
+  {% for d in servicios %}
+  <article class="servicio-ficha tarjeta{% if d.estado == 'en_proceso' %} en-proceso{% endif %}">
+    <div class="d-flex justify-content-between gap-3 flex-wrap">
+      <div>
+        <h3 class="mb-1">{{ d.servicio.nombre }} <span class="text-apagado fw-normal">{{ d.get_variante_display }}</span></h3>
+        <div class="small text-apagado">
+          {{ d.peluquero.nombre_corto }}, {{ d.precio_cobrado|pesos }}{% if d.aplica_comision %}, comisión {{ d.porc_comision_guardado|floatformat:"-2" }}% ({{ d.monto_comision|pesos }}){% endif %}
+          {% if d.es_multisesion %}<br>Sesión {{ d.sesion_numero }} de {{ d.sesiones_totales }}{% endif %}
+        </div>
+      </div>
+      <span class="estado {{ d.estado|clase_estado }}">{{ d.get_estado_display }}</span>
+    </div>
+
+    {% if d.hora_inicio %}
+      <div class="small mt-2">Inicio {{ d.hora_inicio|time:"H:i" }}{% if d.hora_termino %}, término {{ d.hora_termino|time:"H:i" }}, duró {{ d.duracion_min|minutos }}{% endif %}
+        (estimado {{ d.servicio.tiempo_estimado|minutos }}){% if d.cierre_manual %}. <span class="text-apagado">Cerrado por administración: {{ d.motivo_cierre }}</span>{% endif %}</div>
+    {% endif %}
+
+    {% if f.editable %}
+      {% if d.estado == "en_proceso" %}
+        <div class="cronometro mt-2" data-desde="{{ d.hora_inicio|iso }}" data-estimado="{{ d.servicio.tiempo_estimado }}">0:00</div>
+        {% if d.peluquero_id == user.pk or cierra_otros %}
+        <form method="post" action="{% url 'fichas:terminar' d.pk %}" class="mt-2">{% csrf_token %}
+          <button class="btn btn-negro btn-tactil"><i data-lucide="square"></i>Terminar servicio</button></form>
+        {% endif %}
+      {% elif d.estado == "pendiente" %}
+        {% if d.peluquero_id == user.pk or cierra_otros %}
+        <form method="post" action="{% url 'fichas:iniciar' d.pk %}" class="mt-3">{% csrf_token %}
+          <button class="btn btn-negro btn-tactil"><i data-lucide="play"></i>Iniciar servicio</button></form>
+        {% endif %}
+      {% endif %}
+    {% endif %}
+
+    <div class="mt-3">
+      <div class="small fw-semibold mb-1">Insumos usados</div>
+      {% for i in d.insumos.all %}
+        <div class="d-flex align-items-center gap-2 small mb-1">
+          <span class="flex-grow-1">{{ i.insumo }}{% if i.cant_usada %}: {{ i.cant_usada|floatformat:"-2" }} {{ i.insumo.unidad_medida }}{% endif %}{% if i.observacion %} <span class="text-apagado">({{ i.observacion }})</span>{% endif %}</span>
+          {% if f.editable %}<form method="post" action="{% url 'fichas:quitar_insumo' i.pk %}">{% csrf_token %}<button class="btn btn-relieve btn-sm" aria-label="Quitar insumo"><i data-lucide="x"></i></button></form>{% endif %}
+        </div>
+      {% empty %}<div class="small text-apagado">Ninguno registrado.</div>{% endfor %}
+      {% if d.formula %}<div class="small mt-2"><span class="text-apagado">Fórmula:</span> {{ d.formula }}</div>{% endif %}
+      {% if d.observacion_producto %}<div class="small"><span class="text-apagado">Producto:</span> {{ d.observacion_producto }}</div>{% endif %}
+    </div>
+
+    {% if f.editable %}
+    <details class="mt-3">
+      <summary class="small fw-semibold" style="cursor:pointer">Registrar insumos, fórmula{% if cierra_otros and d.estado == 'en_proceso' %} o cierre manual{% endif %}</summary>
+      <form method="post" action="{% url 'fichas:agregar_insumo' d.pk %}" class="row g-2 mt-2 align-items-end" novalidate>{% csrf_token %}
+        <div class="col-12 col-md-5"><label class="form-label">Insumo</label>{{ insumo_form.insumo }}</div>
+        <div class="col-5 col-md-2"><label class="form-label">Cantidad</label>{{ insumo_form.cant_usada }}</div>
+        <div class="col-7 col-md-3"><label class="form-label">Observación</label>{{ insumo_form.observacion }}</div>
+        <div class="col-12 col-md-2"><button class="btn btn-relieve w-100">Agregar</button></div>
+      </form>
+      <form method="post" action="{% url 'fichas:notas_servicio' d.pk %}" class="mt-3">{% csrf_token %}
+        <div class="row g-2">
+          <div class="col-12 col-md-6"><label class="form-label" for="f{{ d.pk }}">Mezcla o fórmula</label><textarea class="form-control" rows="2" id="f{{ d.pk }}" name="formula">{{ d.formula }}</textarea></div>
+          <div class="col-12 col-md-6"><label class="form-label" for="p{{ d.pk }}">Producto (marca y calidad)</label><textarea class="form-control" rows="2" id="p{{ d.pk }}" name="observacion_producto">{{ d.observacion_producto }}</textarea></div>
+        </div>
+        <button class="btn btn-relieve btn-sm mt-2">Guardar notas</button>
+      </form>
+      {% if cierra_otros and d.estado == "en_proceso" %}
+      <form method="post" action="{% url 'fichas:cierre_manual' d.pk %}" class="row g-2 mt-3 align-items-end" novalidate>{% csrf_token %}
+        <div class="col-12 col-md-4"><label class="form-label">Hora real de término</label>{{ cierre_form.hora_termino }}</div>
+        <div class="col-12 col-md-5"><label class="form-label">Motivo</label>{{ cierre_form.motivo }}</div>
+        <div class="col-12 col-md-3"><button class="btn btn-peligro w-100">Cerrar manualmente</button></div>
+      </form>
+      {% endif %}
+      {% if d.estado == "pendiente" %}
+      <form method="post" action="{% url 'fichas:quitar_servicio' d.pk %}" class="mt-3" data-confirmar="¿Quitar {{ d.servicio.nombre }} de la ficha?">{% csrf_token %}
+        <button class="btn btn-peligro btn-sm">Quitar servicio</button></form>
+      {% endif %}
+    </details>
+    {% endif %}
+  </article>
+  {% empty %}
+    <div class="tarjeta vacio"><i data-lucide="scissors"></i><div>Agrega el primer servicio de esta atención.</div></div>
+  {% endfor %}
+</section>
+
+{% if agregar_form %}
+<section class="tarjeta mb-4">
+  <h2 class="mb-1">Agregar servicio</h2>
+  <p class="small text-apagado">Primero aparecen el estilista fijo del cliente y quienes tienen la especialidad. Solo se listan peluqueros con el servicio habilitado.</p>
+  <form method="post" action="{% url 'fichas:agregar_servicio' f.pk %}" novalidate>{% csrf_token %}
+    <div class="row g-3">
+      {% if agregar_form.continuar %}{% campo agregar_form.continuar %}{% endif %}
+      {% campo agregar_form.servicio "col-12 col-md-6" %}
+      {% campo agregar_form.variante "col-6 col-md-3" %}
+      {% campo agregar_form.sesiones_totales "col-6 col-md-3" %}
+      {% campo agregar_form.peluquero %}
+    </div>
+    <button class="btn btn-negro mt-3"><i data-lucide="plus"></i>Agregar servicio</button>
+  </form>
+</section>
+{% endif %}
+
+<section class="tarjeta mb-4">
+  <h2 class="mb-3">Acciones de la ficha</h2>
+  <div class="d-flex flex-wrap gap-2">
+    {% if f.editable %}
+      <form method="post" action="{% url 'fichas:cerrar' f.pk %}">{% csrf_token %}
+        <button class="btn btn-negro" {% if not f.todos_terminados %}disabled title="Todos los servicios deben estar terminados"{% endif %}><i data-lucide="lock"></i>Cerrar ficha</button></form>
+    {% endif %}
+    {% if admin_fichas and f.estado_id == "cerrada" %}
+      <form method="post" action="{% url 'fichas:validar' f.pk %}">{% csrf_token %}<button class="btn btn-negro"><i data-lucide="badge-check"></i>Validar</button></form>
+      <form method="post" action="{% url 'fichas:validar' f.pk %}">{% csrf_token %}<input type="hidden" name="siguiente" value="1"><button class="btn btn-relieve">Validar y revisar la siguiente</button></form>
+    {% endif %}
+  </div>
+  {% if f.editable and not f.todos_terminados %}<p class="small text-apagado mt-2 mb-0">Para cerrar la ficha, todos sus servicios deben estar terminados.</p>{% endif %}
+
+  {% if admin_fichas and f.estado_id != "anulada" %}
+  <details class="mt-4">
+    <summary class="fw-semibold" style="cursor:pointer">Corregir o anular</summary>
+    <p class="small text-apagado mt-2">Antes de cualquier cambio se guarda una copia de la ficha tal como está.</p>
+    <form method="post" novalidate>{% csrf_token %}
+      <div class="row g-3">{% campo motivo_form.motivo %}</div>
+      <div class="d-flex gap-2 mt-3 flex-wrap">
+        {% if not f.editable %}<button class="btn btn-relieve" formaction="{% url 'fichas:corregir' f.pk %}">Reabrir para corregir</button>{% endif %}
+        <button class="btn btn-peligro" formaction="{% url 'fichas:anular' f.pk %}" data-confirmar>Anular ficha</button>
+      </div>
+    </form>
+  </details>
+  {% endif %}
+</section>
+
+{% if uso_gc_form %}
+<section class="tarjeta mb-4">
+  <h2 class="mb-3">Giftcards y promociones en esta atención</h2>
+  <div class="rejilla rejilla-2">
+    <form method="post" action="{% url 'beneficios:usar_giftcard' f.pk %}" novalidate>{% csrf_token %}
+      <div class="row g-2">{% campo uso_gc_form.giftcard %}{% campo uso_gc_form.monto %}</div>
+      <button class="btn btn-relieve mt-2" {% if not uso_gc_form.fields.giftcard.queryset %}disabled{% endif %}>Descontar de giftcard</button>
+    </form>
+    <form method="post" action="{% url 'beneficios:usar_promocion' f.pk %}" novalidate>{% csrf_token %}
+      <div class="row g-2">{% campo uso_pr_form.promocion %}{% campo uso_pr_form.servicio %}</div>
+      <button class="btn btn-relieve mt-2" {% if not uso_pr_form.fields.promocion.queryset %}disabled{% endif %}>Usar promoción</button>
+    </form>
+  </div>
+  {% if usos_gc or usos_pr %}
+    <ul class="lista mt-3">
+      {% for u in usos_gc %}<li class="small"><i data-lucide="gift"></i><span class="flex-grow-1">Giftcard {{ u.giftcard.codigo }}</span><span class="tabular">{{ u.monto_usado|pesos }}</span></li>{% endfor %}
+      {% for u in usos_pr %}<li class="small"><i data-lucide="ticket"></i><span class="flex-grow-1">{{ u.cliente_promocion.promocion }}: {{ u.servicio.nombre }}</span></li>{% endfor %}
+    </ul>
+  {% endif %}
+</section>
+{% endif %}
+
+<div class="rejilla rejilla-2">
+  <section class="tarjeta">
+    <h2 class="mb-3">Valoraciones de seguimiento</h2>
+    {% for v in valoraciones %}
+      <div class="hundido mb-2 small">
+        <div class="d-flex justify-content-between gap-2"><strong>{{ v.get_tipo_display }}</strong><span class="estado {{ v.estado|clase_estado }}">{{ v.get_estado_display }}</span></div>
+        <div class="text-apagado">Programada {{ v.fecha_programada|date:"d-m-Y" }}{% if v.fecha_envio %}; enviada {{ v.fecha_envio|date:"d-m-Y H:i" }}{% endif %}</div>
+        {% if v.estado == "respondida" %}<div class="mt-1"><strong>{{ v.calificacion }}/5</strong> el {{ v.fecha_respuesta|date:"d-m-Y" }}{% if v.respuesta %}: «{{ v.respuesta }}»{% endif %}</div>{% endif %}
+        {% if v.ultimo_error %}<div class="text-danger">{{ v.ultimo_error }}</div>{% endif %}
+      </div>
+    {% empty %}<p class="text-apagado small mb-0">Se programan al cerrar la ficha, si tiene cliente vinculado.</p>{% endfor %}
+  </section>
+  <section class="tarjeta">
+    <h2 class="mb-3">Trazabilidad</h2>
+    <ul class="lista">
+      {% for h in historial %}<li class="small"><span class="tabular">{{ h.fecha_hora_cambio|date:"d-m H:i" }}</span><span class="flex-grow-1"><strong>{{ h.estado }}</strong>{% if h.motivo %}: {{ h.motivo }}{% endif %}</span><span class="text-apagado">{{ h.usuario.nombre|default:"" }}</span></li>{% endfor %}
+    </ul>
+    {% if versiones %}
+      <h3 class="mt-3">Versiones guardadas</h3>
+      <ul class="lista">{% for v in versiones %}<li class="small"><a href="{% url 'fichas:version' f.pk v.pk %}">{{ v.fecha|date:"d-m-Y H:i" }}</a><span class="text-apagado">{{ v.motivo }} ({{ v.usuario.nombre }})</span></li>{% endfor %}</ul>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

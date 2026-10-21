@@ -1,0 +1,94 @@
+{% extends "base.html" %}{% load vc %}
+{% block titulo %}{{ c.nombre_completo }}{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div class="d-flex align-items-center gap-3">
+    <div class="avatar grande">{{ c.inicial }}</div>
+    <div><h1>{{ c.nombre_completo }}</h1><p>{{ c.run_formateado }}{% if not c.activo %}, <span class="estado error">Deshabilitado</span>{% endif %}</p></div>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <a class="btn btn-relieve" href="{% url 'clientes:editar' c.run %}"><i data-lucide="pencil"></i>Editar datos</a>
+    {% puede "abrir_fichas" as abre %}
+    {% if abre and c.activo %}<a class="btn btn-negro" href="{% url 'fichas:nueva' %}?cliente={{ c.run }}"><i data-lucide="file-plus"></i>Nueva ficha</a>{% endif %}
+  </div>
+</div>
+
+<div class="rejilla rejilla-4 mb-4">
+  <div class="tarjeta"><div class="cifra">{{ resumen.visitas }}</div><div class="cifra-label">Visitas</div></div>
+  <div class="tarjeta"><div class="cifra" style="font-size:1.35rem">{{ resumen.ultima_visita|date:"d-m-Y"|default:"Sin visitas" }}</div><div class="cifra-label">Última visita</div></div>
+  <div class="tarjeta"><div class="cifra" style="font-size:1.35rem">{{ resumen.estilista_fijo.nombre_corto|default:"No tiene" }}</div><div class="cifra-label">Estilista fijo</div></div>
+</div>
+
+<div class="rejilla rejilla-2 mb-4">
+  <section class="tarjeta">
+    <h2 class="mb-3">Contacto</h2>
+    <dl class="definiciones">
+      <dt>Teléfono</dt><dd>{{ c.telefono|default:"Falta registrar" }}</dd>
+      <dt>Correo</dt><dd>{{ c.correo|default:"Falta registrar" }}</dd>
+      <dt>Canal de aviso</dt><dd>{{ c.get_canal_preferido_display }}</dd>
+      <dt>Nacimiento</dt><dd>{{ c.fecha_nac|date:"d-m-Y"|default:"—" }}</dd>
+      <dt>Género</dt><dd>{{ c.get_genero_display|default:"—" }}</dd>
+    </dl>
+    {% if not c.datos_completos %}<div class="aviso warning mt-3 mb-0"><i data-lucide="triangle-alert"></i><div>Sin teléfono ni correo no podemos enviarle valoraciones ni recordatorios.</div></div>{% endif %}
+    {% puede "asignar_peluquero" as asigna %}
+    {% if asigna %}
+    <form method="post" action="{% url 'clientes:estilista' c.run %}" class="mt-4 d-flex gap-2 align-items-end">{% csrf_token %}
+      <div class="flex-grow-1">{% campo estilista_form.estilista_fijo %}</div>
+      <button class="btn btn-relieve mb-1">Guardar</button>
+    </form>
+    {% endif %}
+  </section>
+
+  <section class="tarjeta">
+    <h2 class="mb-3">Giftcards y promociones vigentes</h2>
+    <ul class="lista">
+      {% for g in giftcards %}<li><i data-lucide="gift"></i><div class="flex-grow-1"><div class="fw-semibold text-dark">Giftcard {{ g.codigo }}</div><div class="small text-apagado">Vence el {{ g.fecha_vencimiento|date:"d-m-Y" }}</div></div><span class="fw-bold tabular">{{ g.saldo_actual|pesos }}</span></li>{% endfor %}
+      {% for p in promociones %}<li><i data-lucide="ticket"></i><div class="flex-grow-1"><div class="fw-semibold text-dark">{{ p.promocion }} ({{ p.codigo }})</div>
+        <div class="small text-apagado">{% for f in p.detalle_usos %}{{ f.servicio.nombre }}: quedan {{ f.disponibles }} de {{ f.total }}{% if not forloop.last %}; {% endif %}{% endfor %}</div></div></li>{% endfor %}
+      {% if not giftcards and not promociones %}<li class="text-apagado">No tiene giftcards ni promociones vigentes.</li>{% endif %}
+    </ul>
+  </section>
+</div>
+
+<section class="tarjeta">
+  <h2 class="mb-3">Historial de atenciones</h2>
+  {% for f in fichas %}
+    <article class="hundido mb-3">
+      <div class="d-flex justify-content-between flex-wrap gap-2 mb-2">
+        <a href="{% url 'fichas:detalle' f.pk %}" class="fw-bold text-dark text-decoration-none">{{ f.fecha_hora_inicio|date:"d-m-Y H:i" }}, ficha N° {{ f.pk }}</a>
+        <span class="estado {{ f.estado_id|clase_estado }}">{{ f.estado }}</span>
+      </div>
+      {% if f.diagnostico %}<p class="small mb-2"><span class="text-apagado">Diagnóstico:</span> {{ f.diagnostico }}</p>{% endif %}
+      {% for s in f.servicios.all %}
+        <div class="small mb-1">
+          <strong>{{ s.servicio.nombre }}</strong> ({{ s.get_variante_display }}) con {{ s.peluquero.nombre_corto }}{% if s.duracion_min %}, {{ s.duracion_min|minutos }}{% endif %}
+          {% if s.insumos.all %}<div class="text-apagado">Insumos: {% for i in s.insumos.all %}{{ i.insumo }}{% if i.cant_usada %} {{ i.cant_usada|floatformat:"-2" }} {{ i.insumo.unidad_medida }}{% endif %}{% if not forloop.last %}; {% endif %}{% endfor %}</div>{% endif %}
+          {% if s.formula %}<div class="text-apagado">Fórmula: {{ s.formula }}</div>{% endif %}
+        </div>
+      {% endfor %}
+      {% if f.observaciones %}<p class="small mb-1"><span class="text-apagado">Observaciones:</span> {{ f.observaciones }}</p>{% endif %}
+      {% for v in f.valoraciones.all %}{% if v.estado == "respondida" %}
+        <p class="small mb-0"><i data-lucide="star" style="width:14px"></i> {{ v.calificacion }}/5 el {{ v.fecha_respuesta|date:"d-m-Y" }}{% if v.respuesta %}: «{{ v.respuesta }}»{% endif %}</p>
+      {% endif %}{% endfor %}
+    </article>
+  {% empty %}
+    <div class="vacio"><i data-lucide="file-text"></i><div>Este cliente aún no tiene atenciones registradas.</div></div>
+  {% endfor %}
+</section>
+
+{% puede "gestionar_clientes" as gestiona %}
+{% if gestiona %}
+<section class="tarjeta mt-4">
+  <h2 class="mb-2">{% if c.activo %}Deshabilitar cliente{% else %}Habilitar cliente{% endif %}</h2>
+  <p class="small text-apagado">El cliente no se elimina; su historial se conserva.</p>
+  <form method="post" action="{% url 'clientes:estado' c.run %}" novalidate>{% csrf_token %}
+    <div class="row g-3">{% campo motivo_form.motivo %}</div>
+    <button class="btn {% if c.activo %}btn-peligro{% else %}btn-negro{% endif %} mt-3">{% if c.activo %}Deshabilitar{% else %}Habilitar{% endif %}</button>
+  </form>
+  {% if historial_estado %}
+    <h3 class="mt-4">Cambios de estado</h3>
+    <ul class="lista">{% for h in historial_estado %}<li class="small"><span>{{ h.fecha_cambio|date:"d-m-Y H:i" }}</span><span class="fw-semibold">{{ h.tipo_estado }}</span><span class="text-apagado">{{ h.observacion }} ({{ h.responsable }})</span></li>{% endfor %}</ul>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

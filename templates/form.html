@@ -1,0 +1,26 @@
+{% extends "base.html" %}{% load vc %}
+{% block titulo %}{{ titulo }}{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div>
+    <h1>{{ titulo }}</h1>
+    {% if subtitulo %}<p>{{ subtitulo }}</p>{% endif %}
+  </div>
+  {% if volver %}<a class="btn btn-relieve" href="{{ volver }}"><i data-lucide="arrow-left"></i>Volver</a>{% endif %}
+</div>
+<form method="post" class="tarjeta" style="max-width: 760px" novalidate>
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="aviso error"><i data-lucide="circle-alert"></i><div>{{ form.non_field_errors|join:" " }}</div></div>{% endif %}
+  {% for h in form.hidden_fields %}{{ h }}{% endfor %}
+  <div class="row g-3">
+    {% for field in form.visible_fields %}
+      {% campo field field.field.widget.attrs.col %}
+    {% endfor %}
+  </div>
+  {% block extra_form %}{% endblock %}
+  <div class="d-flex gap-2 mt-4 flex-wrap">
+    <button type="submit" class="btn btn-negro">{{ boton|default:"Guardar" }}</button>
+    {% if volver %}<a class="btn btn-relieve" href="{{ volver }}">Cancelar</a>{% endif %}
+  </div>
+</form>
+{% endblock %}

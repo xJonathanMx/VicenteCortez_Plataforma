@@ -1,0 +1,11 @@
+{% extends "base.html" %}{% load static %}
+{% block cuerpo %}
+<div class="tema-flotante"><button type="button" class="btn btn-relieve btn-icono cambiar-tema" data-cambiar-tema aria-label="Cambiar entre modo claro y oscuro" title="Cambiar entre modo claro y oscuro">
+        <i data-lucide="moon" class="icono-claro"></i><i data-lucide="sun" class="icono-oscuro"></i></button></div>
+<div class="login">
+  <div class="tarjeta">
+    <img class="logo" src="{% static 'img/logo.png' %}" alt="Vicente Cortez Peluquería">
+    {% block publico %}{% endblock %}
+  </div>
+</div>
+{% endblock %}

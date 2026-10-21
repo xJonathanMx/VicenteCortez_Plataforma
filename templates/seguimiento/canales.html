@@ -1,0 +1,28 @@
+{% extends "base.html" %}{% load vc %}
+{% block titulo %}Canales y mensajes{% endblock %}
+{% block contenido %}
+<div class="encabezado"><div><h1>Canales y mensajes</h1><p>Por dónde se envían los avisos y qué dicen.</p></div></div>
+{% with pestana="canales" %}{% include "seguimiento/_pestanas.html" %}{% endwith %}
+<section class="tarjeta mb-4">
+  <h2 class="mb-3">Canales</h2>
+  {% for c in canales %}
+    <form method="post" class="fila-lista">{% csrf_token %}<input type="hidden" name="canal" value="{{ c.pk }}">
+      <i data-lucide="{% if c.codigo == 'email' %}mail{% else %}message-circle{% endif %}"></i>
+      <span class="flex-grow-1 fw-semibold">{{ c.nombre }}</span>
+      <span class="estado {% if c.activo %}ok{% else %}error{% endif %}">{% if c.activo %}Activo{% else %}Inactivo{% endif %}</span>
+      <button class="btn btn-relieve btn-sm">{% if c.activo %}Desactivar{% else %}Activar{% endif %}</button>
+    </form>
+  {% endfor %}
+  <p class="small text-apagado mt-3 mb-0">WhatsApp se conecta con la API oficial de Meta (variables WHATSAPP_TOKEN y WHATSAPP_PHONE_ID). Mientras no esté configurada, los mensajes quedan registrados como simulados.</p>
+</section>
+<p class="small text-apagado">Puedes usar estas variables en los mensajes: {nombre}, {servicio}, {peluquero}, {enlace} (enlace para valorar), {codigo}, {saldo} y {fecha} (giftcards).</p>
+<div class="rejilla rejilla-2">
+  {% for p, form in plantillas %}
+    <form method="post" class="tarjeta" style="margin:0">{% csrf_token %}<input type="hidden" name="plantilla" value="{{ p.pk }}">
+      <h3 class="mb-3">{{ p.get_tipo_display }} por {{ p.canal|lower }}</h3>
+      <div class="row g-3">{% if p.canal.codigo == "email" %}{% campo form.asunto %}{% endif %}{% campo form.cuerpo %}</div>
+      <button class="btn btn-relieve btn-sm mt-3">Guardar mensaje</button>
+    </form>
+  {% endfor %}
+</div>
+{% endblock %}

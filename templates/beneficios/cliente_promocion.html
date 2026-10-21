@@ -1,0 +1,34 @@
+{% extends "base.html" %}{% load vc %}
+{% block titulo %}Promoción {{ cp.codigo }}{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>{{ cp.promocion }} <span class="estado {{ cp.estado|clase_estado }} align-middle">{{ cp.get_estado_display }}</span></h1>
+    <p>Código {{ cp.codigo }}, comprada por {{ cp.comprador }} el {{ cp.fecha_compra|date:"d-m-Y" }}{% if cp.beneficiario %}, la usa {{ cp.beneficiario }}{% endif %}. Vence el {{ cp.fecha_vencimiento|date:"d-m-Y" }}.</p></div>
+  <a class="btn btn-relieve" href="{% url 'beneficios:inicio' %}?vista=promociones"><i data-lucide="arrow-left"></i>Promociones</a>
+</div>
+<div class="rejilla rejilla-2">
+  <section class="tarjeta">
+    <h2 class="mb-3">Servicios incluidos</h2>
+    {% for f in filas %}
+      <div class="mb-3">
+        <div class="d-flex justify-content-between small"><strong>{{ f.servicio.nombre }}</strong><span>{{ f.usados }} de {{ f.total }} usados</span></div>
+        <div class="barra-progreso mt-1"><span style="width: {% widthratio f.usados f.total 100 %}%"></span></div>
+      </div>
+    {% endfor %}
+    <h3 class="mt-4">Historial de usos</h3>
+    <ul class="lista">{% for u in usos %}<li class="small"><span>{{ u.fecha_uso|date:"d-m-Y" }}</span><span class="flex-grow-1">{{ u.servicio.nombre }}</span><a href="{% url 'fichas:detalle' u.ficha_id %}">Ficha N° {{ u.ficha_id }}</a></li>
+    {% empty %}<li class="text-apagado small">Sin usos. Se registran desde la ficha de atención.</li>{% endfor %}</ul>
+  </section>
+  <section class="tarjeta">
+    {% if cp.estado == "deshabilitada" %}
+      <h2>Deshabilitada</h2><p class="mb-0">{{ cp.motivo_deshabilitacion }}</p>
+    {% else %}
+      <h2 class="mb-2">Deshabilitar promoción</h2>
+      <form method="post" action="{% url 'beneficios:cliente_promocion_deshabilitar' cp.pk %}" novalidate>{% csrf_token %}
+        <div class="row g-3">{% campo motivo_form.motivo %}</div>
+        <button class="btn btn-peligro mt-3">Deshabilitar</button>
+      </form>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

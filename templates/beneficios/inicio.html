@@ -1,0 +1,58 @@
+{% extends "base.html" %}{% load vc %}
+{% block titulo %}Giftcards y promociones{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>Giftcards y promociones</h1><p>Solo registro informativo: los pagos se hacen fuera del sistema.</p></div>
+  <div class="d-flex gap-2 flex-wrap">
+    {% if vista == "giftcards" %}<a class="btn btn-negro" href="{% url 'beneficios:giftcard_nueva' %}"><i data-lucide="plus"></i>Nueva giftcard</a>
+    {% elif vista == "promociones" %}<a class="btn btn-negro" href="{% url 'beneficios:vender_promocion' %}"><i data-lucide="plus"></i>Registrar promoción adquirida</a>
+    {% else %}<a class="btn btn-negro" href="{% url 'beneficios:promocion_nueva' %}"><i data-lucide="plus"></i>Nueva promoción</a>{% endif %}
+  </div>
+</div>
+<nav class="pestanas">
+  <a href="?vista=giftcards" class="{% if vista == 'giftcards' %}activa{% endif %}">Giftcards</a>
+  <a href="?vista=promociones" class="{% if vista == 'promociones' %}activa{% endif %}">Promociones adquiridas</a>
+  <a href="?vista=catalogo" class="{% if vista == 'catalogo' %}activa{% endif %}">Catálogo de promociones</a>
+</nav>
+
+{% if vista != "catalogo" %}
+<form class="filtros" method="get"><input type="hidden" name="vista" value="{{ vista }}">
+  <div>{{ form.q.label_tag }}{{ form.q }}</div>
+  <div>{{ form.estado.label_tag }}{{ form.estado }}</div>
+  <div>{{ form.desde.label_tag }}{{ form.desde }}</div>
+  <div>{{ form.hasta.label_tag }}{{ form.hasta }}</div>
+  <div class="acciones-filtro"><button class="btn btn-relieve">Filtrar</button></div>
+</form>
+{% endif %}
+
+<div class="tarjeta">
+{% if vista == "giftcards" %}
+  {% for g in items %}
+    <a class="fila-lista" href="{% url 'beneficios:giftcard' g.pk %}">
+      <i data-lucide="gift" class="text-apagado"></i>
+      <div class="flex-grow-1"><div class="principal-texto">{{ g.codigo }}</div><div class="secundario">{{ g.beneficiario }}, vence el {{ g.fecha_vencimiento|date:"d-m-Y" }}</div></div>
+      <span class="tabular fw-semibold">{{ g.saldo_actual|pesos }} <span class="text-apagado fw-normal">de {{ g.monto_inicial|pesos }}</span></span>
+      <span class="estado {{ g.estado|clase_estado }}">{{ g.get_estado_display }}</span>
+    </a>
+  {% empty %}<div class="vacio"><i data-lucide="gift"></i><div>No hay giftcards con esos filtros.</div></div>{% endfor %}
+{% elif vista == "promociones" %}
+  {% for p in items %}
+    <a class="fila-lista" href="{% url 'beneficios:cliente_promocion' p.pk %}">
+      <i data-lucide="ticket" class="text-apagado"></i>
+      <div class="flex-grow-1"><div class="principal-texto">{{ p.promocion }} ({{ p.codigo }})</div><div class="secundario">{{ p.comprador }}, vence el {{ p.fecha_vencimiento|date:"d-m-Y" }}</div></div>
+      <span class="estado {{ p.estado|clase_estado }}">{{ p.get_estado_display }}</span>
+    </a>
+  {% empty %}<div class="vacio"><i data-lucide="ticket"></i><div>No hay promociones adquiridas con esos filtros.</div></div>{% endfor %}
+{% else %}
+  {% for p in items %}
+    <div class="fila-lista flex-wrap">
+      <div class="flex-grow-1"><div class="principal-texto">{{ p.nombre }}{% if not p.activo %} <span class="estado error">Inactiva</span>{% endif %}</div>
+        <div class="secundario">{% for s in p.servicios.all %}{{ s.cantidad_total }}× {{ s.servicio.nombre }}{% if not forloop.last %}, {% endif %}{% endfor %}</div></div>
+      <span class="tabular fw-semibold">{{ p.precio|pesos }}</span>
+      <a class="btn btn-relieve btn-sm" href="{% url 'beneficios:promocion_editar' p.pk %}">Editar</a>
+      <form method="post" action="{% url 'beneficios:promocion_estado' p.pk %}">{% csrf_token %}<button class="btn btn-relieve btn-sm">{% if p.activo %}Desactivar{% else %}Activar{% endif %}</button></form>
+    </div>
+  {% empty %}<div class="vacio"><i data-lucide="ticket"></i><div>Crea la primera promoción del catálogo.</div></div>{% endfor %}
+{% endif %}
+</div>
+{% endblock %}

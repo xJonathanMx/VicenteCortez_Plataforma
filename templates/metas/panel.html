@@ -1,0 +1,56 @@
+{% extends "base.html" %}{% load vc %}
+{% block titulo %}Metas e incentivos{% endblock %}
+{% block contenido %}
+{% puede "gestionar_metas" as gestiona %}
+<div class="encabezado">
+  <div><h1>Metas e incentivos</h1><p>Atenciones = fichas no anuladas en que el peluquero terminó al menos un servicio en el mes.</p></div>
+  <form method="get"><label class="visually-hidden" for="mes">Mes</label>
+    <select class="form-select" id="mes" name="mes" onchange="this.form.submit()">{% for v, t in meses %}<option value="{{ v }}" {% if v == mes_sel %}selected{% endif %}>{{ t }}</option>{% endfor %}</select></form>
+</div>
+
+<section class="tarjeta mb-4">
+  <div class="tarjeta-titulo"><h2>Metas de {{ nombre_mes }}</h2>{% if cerrado %}<span class="estado">Mes cerrado</span>{% endif %}</div>
+  <form method="post" action="{% url 'metas:guardar' %}">{% csrf_token %}
+    <input type="hidden" name="mes" value="{{ mes }}"><input type="hidden" name="anio" value="{{ anio }}">
+    <div class="tabla-scroll"><table class="tabla apilable">
+      <thead><tr><th>Peluquero</th><th>Meta (atenciones)</th><th>Incentivo base ($)</th><th>Avance</th><th class="num">Incentivo</th></tr></thead>
+      <tbody>{% for f in filas %}<tr>
+        <td data-label="Peluquero" class="fw-semibold">{{ f.p.nombre_corto }}</td>
+        <td data-label="Meta"><input class="form-control" style="max-width:110px" name="meta_{{ f.p.pk }}" inputmode="numeric" value="{{ f.meta.meta_cliente|default_if_none:'' }}" {% if f.meta.cerrada or not gestiona %}disabled{% endif %} aria-label="Meta de {{ f.p.nombre_corto }}"></td>
+        <td data-label="Incentivo base"><input class="form-control" style="max-width:140px" name="base_{{ f.p.pk }}" inputmode="numeric" value="{{ f.meta.incentivo_base|default_if_none:'' }}" {% if f.meta.cerrada or not gestiona %}disabled{% endif %} aria-label="Incentivo base de {{ f.p.nombre_corto }}"></td>
+        <td data-label="Avance" style="min-width:170px">{% if f.avance %}<div class="d-flex align-items-center gap-2"><div class="barra-progreso flex-grow-1"><span style="width: {{ f.avance.barra }}%"></span></div><span class="small tabular">{{ f.avance.logradas }}/{{ f.meta.meta_cliente }}</span></div>{% else %}<span class="small text-apagado">Sin meta</span>{% endif %}</td>
+        <td data-label="Incentivo" class="num">{% if f.avance %}{{ f.avance.incentivo|pesos }}{% else %}—{% endif %}</td>
+      </tr>{% endfor %}</tbody>
+    </table></div>
+    {% if gestiona and not cerrado %}<button class="btn btn-negro mt-3">Guardar metas</button>{% endif %}
+  </form>
+  {% if gestiona and puede_cerrar and not cerrado %}
+    <form method="post" action="{% url 'metas:cerrar' %}" class="mt-3" data-confirmar="Al cerrar el mes, los resultados quedan congelados y no cambian aunque se corrijan fichas. ¿Cerrar {{ nombre_mes }}?">{% csrf_token %}
+      <input type="hidden" name="mes" value="{{ mes }}"><input type="hidden" name="anio" value="{{ anio }}">
+      <button class="btn btn-relieve"><i data-lucide="lock"></i>Cerrar {{ nombre_mes }}</button></form>
+  {% endif %}
+</section>
+
+<div class="rejilla rejilla-2">
+  <section class="tarjeta">
+    <h2 class="mb-3">Comisiones de externos</h2>
+    <form class="filtros" method="get"><input type="hidden" name="mes" value="{{ mes_sel }}">
+      <div>{{ form.desde.label_tag }}{{ form.desde }}</div><div>{{ form.hasta.label_tag }}{{ form.hasta }}</div>
+      <div class="acciones-filtro"><button class="btn btn-relieve">Ver</button></div>
+    </form>
+    <ul class="lista">{% for c in comisiones %}<li><span class="flex-grow-1 fw-semibold">{{ c.peluquero.nombre_corto }}</span><span class="small text-apagado">{{ c.servicios }} servicios, {{ c.ventas|pesos }}</span><strong class="tabular">{{ c.comision|pesos }}</strong></li>
+      {% empty %}<li class="text-apagado">Sin comisiones en el período.</li>{% endfor %}</ul>
+  </section>
+  <section class="tarjeta">
+    <h2 class="mb-2">Escala de incentivo</h2>
+    <p class="small text-apagado">Qué parte del incentivo base se informa según el cumplimiento.</p>
+    <form method="post" action="{% url 'metas:niveles' %}">{% csrf_token %}
+      {% for n in niveles %}
+        <div class="d-flex align-items-center gap-2 mb-2"><span class="flex-grow-1">Desde {{ n.porcentaje_minimo }}% de la meta</span>
+          <input class="form-control" style="max-width:90px" name="nivel_{{ n.pk }}" value="{{ n.porcentaje_pago }}" inputmode="numeric" {% if not gestiona %}disabled{% endif %} aria-label="Porcentaje de pago desde {{ n.porcentaje_minimo }}%"><span>%</span></div>
+      {% endfor %}
+      {% if gestiona %}<button class="btn btn-relieve btn-sm mt-2">Guardar escala</button>{% endif %}
+    </form>
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block titulo %}Insumos{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>Servicios e insumos</h1><p>Productos que se registran en las fichas. No se controla stock.</p></div>
+  <a class="btn btn-negro" href="{% url 'catalogo:insumo_nuevo' %}"><i data-lucide="plus"></i>Nuevo insumo</a>
+</div>
+{% include "catalogo/_pestanas.html" %}
+<div class="mb-3"><a class="small" href="?ver={% if ver == 'todos' %}activos{% else %}todos{% endif %}">{% if ver == 'todos' %}Ver solo activos{% else %}Incluir desactivados{% endif %}</a></div>
+<div class="tarjeta"><div class="tabla-scroll"><table class="tabla apilable">
+  <thead><tr><th>Insumo</th><th>Marca</th><th>Calidad</th><th>Unidad</th><th class="num">Veces usado</th><th></th></tr></thead>
+  <tbody>{% for i in insumos %}<tr>
+    <td data-label="Insumo" class="fw-semibold">{{ i.nombre }}{% if not i.activo %} <span class="estado error">Desactivado</span>{% endif %}</td>
+    <td data-label="Marca">{{ i.marca }}</td><td data-label="Calidad">{{ i.calidad }}</td><td data-label="Unidad">{{ i.unidad_medida }}</td>
+    <td data-label="Veces usado" class="num">{{ i.usos_n }}</td>
+    <td class="text-end"><div class="d-inline-flex gap-2"><a class="btn btn-relieve btn-sm" href="{% url 'catalogo:insumo_editar' i.pk %}">Editar</a>
+      <form method="post" action="{% url 'catalogo:insumo_estado' i.pk %}">{% csrf_token %}<button class="btn btn-relieve btn-sm">{% if i.activo %}Desactivar{% else %}Activar{% endif %}</button></form></div></td>
+  </tr>{% empty %}<tr><td colspan="6" class="text-apagado">Sin insumos.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

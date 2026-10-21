@@ -1,0 +1,23 @@
+{% extends "base.html" %}{% load vc %}
+{% block titulo %}Versión de la ficha N° {{ f.pk }}{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>Ficha N° {{ f.pk }} antes del cambio</h1><p>Guardada el {{ v.fecha|date:"d-m-Y H:i" }} por {{ v.usuario.nombre_corto }}. {{ v.motivo }}</p></div>
+  <a class="btn btn-relieve" href="{% url 'fichas:detalle' f.pk %}"><i data-lucide="arrow-left"></i>Volver a la ficha</a>
+</div>
+<section class="tarjeta">
+  <dl class="definiciones">
+    <dt>Estado</dt><dd>{{ v.contenido.estado }}</dd>
+    <dt>Diagnóstico</dt><dd>{{ v.contenido.diagnostico|default:"—" }}</dd>
+    <dt>Observaciones</dt><dd>{{ v.contenido.observaciones|default:"—" }}</dd>
+  </dl>
+  <h2 class="mt-4 mb-3">Servicios</h2>
+  <div class="tabla-scroll"><table class="tabla apilable">
+    <thead><tr><th>Servicio</th><th>Calidad</th><th>Peluquero (RUN)</th><th class="num">Precio</th><th>Estado</th><th>Inicio</th><th>Término</th></tr></thead>
+    <tbody>{% for s in v.contenido.servicios %}<tr>
+      <td data-label="Servicio">{{ s.servicio_nombre }}</td><td data-label="Calidad">{{ s.variante }}</td><td data-label="Peluquero">{{ s.peluquero }}</td>
+      <td data-label="Precio" class="num">{{ s.precio_cobrado|pesos }}</td><td data-label="Estado">{{ s.estado }}</td>
+      <td data-label="Inicio">{{ s.hora_inicio|default:"—"|slice:":16" }}</td><td data-label="Término">{{ s.hora_termino|default:"—"|slice:":16" }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endblock %}

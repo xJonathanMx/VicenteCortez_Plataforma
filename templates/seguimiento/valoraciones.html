@@ -1,0 +1,46 @@
+{% extends "base.html" %}{% load vc %}
+{% block titulo %}Valoraciones{% endblock %}
+{% block contenido %}
+<div class="encabezado"><div><h1>Valoraciones de seguimiento</h1><p>Cómo evalúan los clientes su atención. Se envían solas en la fecha programada.</p></div></div>
+{% with pestana="valoraciones" %}{% include "seguimiento/_pestanas.html" %}{% endwith %}
+
+<form class="filtros" method="get">
+  <div>{{ form.peluquero.label_tag }}{{ form.peluquero }}</div>
+  <div>{{ form.estado.label_tag }}{{ form.estado }}</div>
+  <div>{{ form.desde.label_tag }}{{ form.desde }}</div>
+  <div>{{ form.hasta.label_tag }}{{ form.hasta }}</div>
+  <div class="acciones-filtro"><button class="btn btn-relieve">Filtrar</button></div>
+</form>
+
+<div class="rejilla rejilla-2 mb-4">
+  <section class="tarjeta">
+    <h2 class="mb-3">Promedio por peluquero</h2>
+    {% for p in promedios %}
+      <div class="d-flex align-items-center gap-3 mb-2">
+        <span class="flex-grow-1">{{ p.peluquero__nombre }} {{ p.peluquero__ap_paterno }}</span>
+        <span class="small text-apagado">{{ p.n }} respuesta{{ p.n|pluralize }}</span>
+        <strong class="tabular">{{ p.promedio|floatformat:1 }} / 5</strong>
+      </div>
+    {% empty %}<p class="text-apagado mb-0">Aún no hay respuestas en este período.</p>{% endfor %}
+  </section>
+  <section class="tarjeta">
+    <h2 class="mb-3">Por estado</h2>
+    {% for codigo, nombre in estados %}
+      <div class="d-flex justify-content-between mb-1"><a href="?estado={{ codigo }}" class="estado {{ codigo|clase_estado }} text-decoration-none">{{ nombre }}</a><strong class="tabular">{% for k, n in conteo.items %}{% if k == codigo %}{{ n }}{% endif %}{% endfor %}</strong></div>
+    {% endfor %}
+  </section>
+</div>
+
+<div class="tarjeta"><div class="tabla-scroll"><table class="tabla apilable">
+  <thead><tr><th>Programada</th><th>Cliente</th><th>Peluquero</th><th>Tipo</th><th>Estado</th><th>Respuesta</th><th></th></tr></thead>
+  <tbody>{% for v in valoraciones %}<tr>
+    <td data-label="Programada">{{ v.fecha_programada|date:"d-m-Y" }}</td>
+    <td data-label="Cliente"><a href="{% url 'fichas:detalle' v.ficha_id %}">{{ v.ficha.nombre_cliente }}</a></td>
+    <td data-label="Peluquero">{{ v.peluquero.nombre_corto }}</td>
+    <td data-label="Tipo">{{ v.get_tipo_display }}</td>
+    <td data-label="Estado"><span class="estado {{ v.estado|clase_estado }}">{{ v.get_estado_display }}</span></td>
+    <td data-label="Respuesta">{% if v.calificacion %}<strong>{{ v.calificacion }}/5</strong> {{ v.respuesta|truncatechars:60 }}{% elif v.ultimo_error %}<span class="text-danger small">{{ v.ultimo_error|truncatechars:70 }}</span>{% else %}—{% endif %}</td>
+    <td class="text-end">{% if v.estado == "error" %}<form method="post" action="{% url 'seguimiento:reintentar' 'valoracion' v.pk %}">{% csrf_token %}<button class="btn btn-relieve btn-sm">Reintentar</button></form>{% endif %}</td>
+  </tr>{% empty %}<tr><td colspan="7" class="text-apagado">No hay valoraciones con esos filtros.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

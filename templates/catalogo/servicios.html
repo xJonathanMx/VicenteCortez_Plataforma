@@ -1,0 +1,33 @@
+{% extends "base.html" %}{% load vc %}
+{% block titulo %}Servicios{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>Servicios e insumos</h1><p>Precios por calidad, tiempos estimados y renovaciones.</p></div>
+  <a class="btn btn-negro" href="{% url 'catalogo:servicio_nuevo' %}"><i data-lucide="plus"></i>Nuevo servicio</a>
+</div>
+{% include "catalogo/_pestanas.html" %}
+<div class="mb-3"><a class="small" href="?ver={% if ver == 'todos' %}activos{% else %}todos{% endif %}">{% if ver == 'todos' %}Ver solo activos{% else %}Incluir deshabilitados{% endif %}</a></div>
+{% for tipo, lista in grupos %}
+<section class="tarjeta">
+  <div class="tarjeta-titulo"><h2>{{ tipo.nombre }}</h2><span class="small text-apagado">{{ tipo.get_seguimiento_display }}</span></div>
+  <div class="tabla-scroll"><table class="tabla apilable">
+    <thead><tr><th>Servicio</th><th class="num">Básico</th><th class="num">Plus</th><th class="num">Ultra plus</th><th class="num">Tiempo</th><th class="num">Renovación</th><th></th></tr></thead>
+    <tbody>
+    {% for s in lista %}
+      <tr>
+        <td data-label="Servicio"><a class="fw-semibold" href="{% url 'catalogo:servicio' s.pk %}">{{ s.nombre }}</a>{% if not s.activo %} <span class="estado error">Deshabilitado</span>{% endif %}</td>
+        <td data-label="Básico" class="num">{{ s.precio|pesos }}</td>
+        <td data-label="Plus" class="num">{{ s.precio_plus|pesos }}</td>
+        <td data-label="Ultra plus" class="num">{{ s.precio_ultra_plus|pesos }}</td>
+        <td data-label="Tiempo" class="num">{{ s.tiempo_estimado|minutos }}</td>
+        <td data-label="Renovación" class="num">{% if s.dia_renovacion %}{{ s.dia_renovacion }} días{% else %}—{% endif %}</td>
+        <td class="text-end"><a class="btn btn-relieve btn-sm" href="{% url 'catalogo:servicio_editar' s.pk %}">Editar</a></td>
+      </tr>
+    {% empty %}<tr><td colspan="7" class="text-apagado">Sin servicios en este tipo.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% empty %}
+<div class="tarjeta vacio"><i data-lucide="scissors"></i><div>Aún no hay servicios. Crea primero un tipo de servicio.</div></div>
+{% endfor %}
+{% endblock %}

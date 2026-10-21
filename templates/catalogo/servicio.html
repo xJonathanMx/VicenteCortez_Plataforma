@@ -1,0 +1,41 @@
+{% extends "base.html" %}{% load vc %}
+{% block titulo %}{{ s.nombre }}{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>{{ s.nombre }}</h1><p>{{ s.tipo.nombre }}{% if not s.activo %}, <span class="estado error">Deshabilitado</span>{% endif %}</p></div>
+  <div class="d-flex gap-2 flex-wrap">
+    <a class="btn btn-relieve" href="{% url 'catalogo:servicios' %}"><i data-lucide="arrow-left"></i>Servicios</a>
+    <a class="btn btn-negro" href="{% url 'catalogo:servicio_editar' s.pk %}"><i data-lucide="pencil"></i>Editar</a>
+  </div>
+</div>
+<div class="rejilla rejilla-2">
+  <section class="tarjeta">
+    <dl class="definiciones">
+      <dt>Precio básico</dt><dd>{{ s.precio|pesos }}</dd>
+      <dt>Precio plus</dt><dd>{{ s.precio_plus|pesos }}</dd>
+      <dt>Precio ultra plus</dt><dd>{{ s.precio_ultra_plus|pesos }}</dd>
+      <dt>Tiempo estimado</dt><dd>{{ s.tiempo_estimado|minutos }}</dd>
+      <dt>Renovación</dt><dd>{% if s.dia_renovacion %}A los {{ s.dia_renovacion }} días se avisa al cliente{% else %}No aplica{% endif %}</dd>
+      <dt>Especialidades</dt><dd>{{ s.especialidades.all|join:", "|default:"Ninguna" }}</dd>
+      <dt>Descripción</dt><dd>{{ s.descripcion|default:"—"|linebreaksbr }}</dd>
+    </dl>
+    <h3 class="mt-4">Peluqueros habilitados</h3>
+    <p class="small text-apagado">{% for h in habilitados %}{{ h.usuario.nombre_corto }}{% if h.nivel %} ({{ h.nivel|lower }}){% endif %}{% if not forloop.last %}, {% endif %}{% empty %}Nadie todavía. Habilítalo desde la ficha de cada usuario.{% endfor %}</p>
+    <form method="post" action="{% url 'catalogo:servicio_estado' s.pk %}" class="mt-3 d-flex gap-2 align-items-end flex-wrap">{% csrf_token %}
+      <div class="flex-grow-1"><label class="form-label" for="motivo">Motivo {% if s.activo %}para deshabilitar{% else %}para habilitar{% endif %}</label><input class="form-control" id="motivo" name="motivo" maxlength="255"></div>
+      <button class="btn {% if s.activo %}btn-peligro{% else %}btn-negro{% endif %}">{% if s.activo %}Deshabilitar{% else %}Habilitar{% endif %}</button>
+    </form>
+  </section>
+  <section class="tarjeta">
+    <h2 class="mb-3">Historial de precios</h2>
+    <div class="tabla-scroll"><table class="tabla apilable">
+      <thead><tr><th>Fecha</th><th>Calidad</th><th class="num">Anterior</th><th class="num">Nuevo</th><th>Por</th></tr></thead>
+      <tbody>{% for h in precios %}<tr><td data-label="Fecha">{{ h.fecha_cambio|date:"d-m-Y H:i" }}</td><td data-label="Calidad">{{ h.get_variante_display }}</td>
+        <td data-label="Anterior" class="num">{{ h.precio_anterior|pesos }}</td><td data-label="Nuevo" class="num">{{ h.precio_nuevo|pesos }}</td><td data-label="Por">{{ h.responsable|default:"Carga inicial" }}</td></tr>
+      {% empty %}<tr><td colspan="5" class="text-apagado">Sin cambios de precio.</td></tr>{% endfor %}</tbody>
+    </table></div>
+    <h2 class="mt-4 mb-3">Historial de estado</h2>
+    <ul class="lista">{% for h in estados %}<li class="small"><span>{{ h.fecha_cambio|date:"d-m-Y H:i" }}</span><span class="fw-semibold">{{ h.tipo_estado }}</span><span class="text-apagado">{{ h.motivo|default:"Sin motivo" }} ({{ h.responsable }})</span></li>{% empty %}<li class="text-apagado small">Sin cambios de estado.</li>{% endfor %}</ul>
+  </section>
+</div>
+{% endblock %}

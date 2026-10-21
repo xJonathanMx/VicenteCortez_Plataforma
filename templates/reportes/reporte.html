@@ -1,0 +1,52 @@
+{% extends "base.html" %}{% load vc %}
+{% block titulo %}{{ titulo }}{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>{{ titulo }}</h1><p>{{ subtitulo }}</p></div>
+  <div class="d-flex gap-2 flex-wrap no-imprimir">
+    <a class="btn btn-relieve" href="{% url 'reportes:inicio' %}"><i data-lucide="arrow-left"></i>Reportes</a>
+    <a class="btn btn-relieve" href="{% url_con formato='xlsx' %}"><i data-lucide="file-spreadsheet"></i>Excel</a>
+    <a class="btn btn-negro" href="{% url_con formato='pdf' %}"><i data-lucide="file-down"></i>PDF</a>
+  </div>
+</div>
+<form class="filtros no-imprimir" method="get">
+  <div>{{ form.desde.label_tag }}{{ form.desde }}</div>
+  <div>{{ form.hasta.label_tag }}{{ form.hasta }}</div>
+  <div>{{ form.peluquero.label_tag }}{{ form.peluquero }}</div>
+  <div>{{ form.servicio.label_tag }}{{ form.servicio }}</div>
+  <div class="acciones-filtro"><button class="btn btn-relieve">Aplicar</button></div>
+</form>
+
+{% if datos.resumen %}
+<div class="rejilla rejilla-4 mb-4">
+  {% for k, v in datos.resumen %}
+    <div class="tarjeta"><div class="cifra" style="font-size:1.6rem">{% if "Total" in k or "Monto" in k %}{{ v|pesos }}{% else %}{{ v }}{% endif %}</div><div class="cifra-label">{{ k }}</div></div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if grafico %}
+<section class="tarjeta mb-4">
+  {% for etiqueta, valor, ancho in grafico %}
+    <div class="d-flex align-items-center gap-3 mb-2">
+      <span class="small text-truncate" style="width: 34%; min-width: 110px">{{ etiqueta }}</span>
+      <div class="flex-grow-1 barra-progreso" style="height: 14px"><span style="width: {{ ancho }}%"></span></div>
+      <span class="small tabular fw-semibold" style="min-width: 48px; text-align: right">{{ valor|floatformat:"-2" }}</span>
+    </div>
+  {% endfor %}
+</section>
+{% endif %}
+
+<section class="tarjeta">
+  <div class="tabla-scroll"><table class="tabla apilable">
+    <thead><tr>{% for c in datos.columnas %}<th>{{ c }}</th>{% endfor %}</tr></thead>
+    <tbody>
+      {% for fila in datos.filas %}<tr>{% for v in fila %}{% with i=forloop.counter0 %}
+        <td data-label="{% for c in datos.columnas %}{% if forloop.counter0 == i %}{{ c }}{% endif %}{% endfor %}"{% if i in datos.moneda %} class="num"{% endif %}>{% if i in datos.moneda %}{{ v|pesos }}{% else %}{{ v }}{% endif %}</td>
+      {% endwith %}{% endfor %}</tr>
+      {% empty %}<tr><td colspan="{{ datos.columnas|length }}" class="text-apagado">No hay datos en este período.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+  {% if datos.nota %}<p class="small text-apagado mt-3 mb-0">{{ datos.nota }}</p>{% endif %}
+</section>
+{% endblock %}

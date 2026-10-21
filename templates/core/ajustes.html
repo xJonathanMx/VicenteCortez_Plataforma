@@ -1,0 +1,25 @@
+{% extends "base.html" %}{% load vc %}
+{% block titulo %}Ajustes{% endblock %}
+{% block contenido %}
+<div class="encabezado"><div><h1>Ajustes</h1><p>Tus datos de contacto y tu contraseña.</p></div></div>
+<div class="rejilla rejilla-2">
+  <section class="tarjeta">
+    <div class="d-flex align-items-center gap-3 mb-4">
+      <div class="avatar grande">{{ user.inicial }}</div>
+      <div><div class="fw-bold text-dark fs-5">{{ user.nombre_completo }}</div>
+        <div class="text-apagado small">{{ user.run_formateado }}, {{ user.descripcion_roles }}</div></div>
+    </div>
+    <form method="post" novalidate>{% csrf_token %}<input type="hidden" name="accion" value="contacto">
+      <div class="row g-3">{% campo contacto.correo %}{% campo contacto.telefono %}</div>
+      <button class="btn btn-negro mt-4">Guardar contacto</button>
+    </form>
+  </section>
+  <section class="tarjeta">
+    <h2 class="mb-3">Cambiar contraseña</h2>
+    <form method="post" novalidate>{% csrf_token %}<input type="hidden" name="accion" value="clave">
+      <div class="row g-3">{% campo clave.old_password %}{% campo clave.new_password1 %}{% campo clave.new_password2 %}</div>
+      <button class="btn btn-negro mt-4">Cambiar contraseña</button>
+    </form>
+  </section>
+</div>
+{% endblock %}

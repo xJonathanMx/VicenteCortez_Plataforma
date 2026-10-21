@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block titulo %}Historial de comisiones{% endblock %}
+{% block contenido %}
+<div class="encabezado"><div><h1>Comisiones de {{ t.nombre }}</h1><p>Cada cambio queda registrado y no se puede editar.</p></div>
+  <a class="btn btn-relieve" href="{% url 'catalogo:tipos' %}"><i data-lucide="arrow-left"></i>Tipos</a></div>
+<div class="tarjeta"><div class="tabla-scroll"><table class="tabla apilable">
+  <thead><tr><th>Fecha</th><th>Contrato</th><th class="num">Anterior</th><th class="num">Nuevo</th><th>Por</th></tr></thead>
+  <tbody>{% for h in historial %}<tr><td data-label="Fecha">{{ h.fecha_cambio|date:"d-m-Y H:i" }}</td><td data-label="Contrato">{{ h.contrato }}</td>
+    <td data-label="Anterior" class="num">{% if h.porcentaje_anterior is not None %}{{ h.porcentaje_anterior|floatformat:"-2" }}%{% else %}—{% endif %}</td>
+    <td data-label="Nuevo" class="num">{{ h.porcentaje_nuevo|floatformat:"-2" }}%</td><td data-label="Por">{{ h.responsable }}</td></tr>
+  {% empty %}<tr><td colspan="5" class="text-apagado">Sin cambios registrados.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

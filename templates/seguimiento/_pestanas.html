@@ -1,0 +1,10 @@
+{% load vc %}{% puede "configurar_canales" as configura %}
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+  <nav class="pestanas">
+    <a href="{% url 'seguimiento:valoraciones' %}" class="{% if pestana == 'valoraciones' %}activa{% endif %}">Valoraciones</a>
+    <a href="{% url 'seguimiento:recordatorios' %}" class="{% if pestana == 'recordatorios' %}activa{% endif %}">Recordatorios</a>
+    {% if configura %}<a href="{% url 'seguimiento:canales' %}" class="{% if pestana == 'canales' %}activa{% endif %}">Canales y mensajes</a>{% endif %}
+  </nav>
+  <form method="post" action="{% url 'seguimiento:procesar' %}">{% csrf_token %}<input type="hidden" name="volver" value="{{ request.path }}">
+    <button class="btn btn-relieve"><i data-lucide="send"></i>Enviar pendientes ahora</button></form>
+</div>

@@ -1,0 +1,22 @@
+{% extends "base.html" %}{% load vc %}
+{% block titulo %}Recordatorios{% endblock %}
+{% block contenido %}
+<div class="encabezado"><div><h1>Recordatorios</h1><p>Avisos de renovación de tratamientos y de giftcards por vencer.</p></div></div>
+{% with pestana="recordatorios" %}{% include "seguimiento/_pestanas.html" %}{% endwith %}
+<form class="filtros" method="get">
+  <div><label class="form-label" for="estado">Estado</label><select class="form-select" name="estado" id="estado">
+    <option value="">Todos</option>{% for c, n in estados %}<option value="{{ c }}" {% if c == estado %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></div>
+  <div class="acciones-filtro"><button class="btn btn-relieve">Filtrar</button></div>
+</form>
+<div class="tarjeta"><div class="tabla-scroll"><table class="tabla apilable">
+  <thead><tr><th>Fecha</th><th>Cliente</th><th>Motivo</th><th>Estado</th><th>Detalle</th><th></th></tr></thead>
+  <tbody>{% for r in recordatorios %}<tr>
+    <td data-label="Fecha">{{ r.fecha_programada|date:"d-m-Y" }}</td>
+    <td data-label="Cliente"><a href="{% url 'clientes:detalle' r.cliente_id %}">{{ r.cliente }}</a></td>
+    <td data-label="Motivo">{% if r.detalle %}Renovar {{ r.detalle.servicio.nombre|lower }}{% elif r.giftcard %}Giftcard {{ r.giftcard.codigo }} por vencer{% else %}{{ r.get_tipo_display }}{% endif %}</td>
+    <td data-label="Estado"><span class="estado {{ r.estado|clase_estado }}">{{ r.get_estado_display }}</span></td>
+    <td data-label="Detalle" class="small">{% if r.fecha_envio %}Enviado {{ r.fecha_envio|date:"d-m-Y H:i" }}{% endif %}{% if r.ultimo_error %}<span class="text-danger">{{ r.ultimo_error|truncatechars:70 }}</span>{% endif %}</td>
+    <td class="text-end">{% if r.estado == "fallido" %}<form method="post" action="{% url 'seguimiento:reintentar' 'recordatorio' r.pk %}">{% csrf_token %}<button class="btn btn-relieve btn-sm">Reintentar</button></form>{% endif %}</td>
+  </tr>{% empty %}<tr><td colspan="6" class="text-apagado">No hay recordatorios.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

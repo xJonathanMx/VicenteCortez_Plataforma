@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block titulo %}Tipos de servicio{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>Servicios e insumos</h1><p>La comisión se define por tipo de servicio y solo aplica a contratos externos.</p></div>
+  <a class="btn btn-negro" href="{% url 'catalogo:tipo_nuevo' %}"><i data-lucide="plus"></i>Nuevo tipo</a>
+</div>
+{% include "catalogo/_pestanas.html" %}
+<div class="tarjeta">
+  {% for t in tipos %}
+    <div class="fila-lista flex-wrap">
+      <div class="flex-grow-1">
+        <div class="principal-texto">{{ t.nombre }}{% if not t.activo %} <span class="estado error">Deshabilitado</span>{% endif %}</div>
+        <div class="secundario">{{ t.n }} servicio{{ t.n|pluralize }}; {{ t.get_seguimiento_display|lower }};
+          comisión {% for c in t.comisiones.all %}{% if c.contrato.aplica_comision %}{{ c.contrato|lower }} {{ c.porcentaje|floatformat:"-2" }}%{% endif %}{% empty %}sin definir{% endfor %}</div>
+      </div>
+      <div class="d-flex gap-2">
+        <a class="btn btn-relieve btn-sm" href="{% url 'catalogo:tipo_historial' t.pk %}">Historial</a>
+        <a class="btn btn-relieve btn-sm" href="{% url 'catalogo:tipo_editar' t.pk %}">Editar</a>
+        <form method="post" action="{% url 'catalogo:tipo_estado' t.pk %}">{% csrf_token %}<button class="btn btn-relieve btn-sm">{% if t.activo %}Deshabilitar{% else %}Habilitar{% endif %}</button></form>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}

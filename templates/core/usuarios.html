@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block titulo %}Usuarios{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>Usuarios</h1><p>Administradores, recepción y peluqueros. Los usuarios no se eliminan: se deshabilitan.</p></div>
+  <div class="d-flex gap-2 flex-wrap">
+    <a class="btn btn-relieve" href="{% url 'core:catalogo_acceso' 'roles' %}"><i data-lucide="shield"></i>Roles y privilegios</a>
+    <a class="btn btn-negro" href="{% url 'core:usuario_nuevo' %}"><i data-lucide="user-plus"></i>Nuevo usuario</a>
+  </div>
+</div>
+<form class="filtros" method="get">
+  <div><label class="form-label" for="q">Buscar</label><input class="form-control" id="q" name="q" value="{{ q }}" placeholder="Nombre o RUN"></div>
+  <div><label class="form-label" for="estado">Estado</label>
+    <select class="form-select" id="estado" name="estado">
+      <option value="activos" {% if estado == 'activos' %}selected{% endif %}>Activos</option>
+      <option value="inactivos" {% if estado == 'inactivos' %}selected{% endif %}>Deshabilitados</option>
+      <option value="todos" {% if estado == 'todos' %}selected{% endif %}>Todos</option>
+    </select></div>
+  <div class="acciones-filtro"><button class="btn btn-relieve">Filtrar</button></div>
+</form>
+<div class="tarjeta">
+  {% for u in usuarios %}
+    <a class="fila-lista" href="{% url 'core:usuario' u.run %}">
+      <div class="avatar">{{ u.inicial }}</div>
+      <div class="flex-grow-1 overflow-hidden">
+        <div class="principal-texto">{{ u.nombre_completo }}</div>
+        <div class="secundario">{{ u.run_formateado }}, {{ u.descripcion_roles }}{% if u.contrato %}, contrato {{ u.contrato|lower }}{% endif %}</div>
+      </div>
+      {% if not u.is_active %}<span class="estado error">Deshabilitado</span>{% endif %}
+      <i data-lucide="chevron-right" class="text-apagado"></i>
+    </a>
+  {% empty %}
+    <div class="vacio"><i data-lucide="users"></i><div>No hay usuarios con esos filtros.</div></div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends "base.html" %}{% load vc %}
+{% block titulo %}{{ u.nombre_corto }}{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div class="d-flex align-items-center gap-3">
+    <div class="avatar grande">{{ u.inicial }}</div>
+    <div><h1>{{ u.nombre_completo }}</h1><p>{{ u.run_formateado }}{% if not u.is_active %}, <span class="estado error">Deshabilitado</span>{% endif %}</p></div>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <a class="btn btn-relieve" href="{% url 'core:usuarios' %}"><i data-lucide="arrow-left"></i>Usuarios</a>
+    <a class="btn btn-negro" href="{% url 'core:usuario_editar' u.run %}"><i data-lucide="pencil"></i>Editar</a>
+  </div>
+</div>
+<div class="rejilla rejilla-2">
+  <section class="tarjeta">
+    <h2 class="mb-3">Datos</h2>
+    <dl class="definiciones">
+      <dt>Correo</dt><dd>{{ u.correo }}</dd>
+      <dt>Teléfono</dt><dd>{{ u.telefono }}</dd>
+      <dt>Género</dt><dd>{{ u.get_genero_display }}</dd>
+      <dt>Contrato</dt><dd>{{ u.contrato|default:"Sin definir" }}{% if u.cobra_comision %} (recibe comisión){% endif %}</dd>
+      <dt>Roles</dt><dd>{{ u.descripcion_roles }}</dd>
+      <dt>Especialidades</dt><dd>{% for e in especialidades %}{{ e.especialidad }}{% if e.es_principal %} (principal){% endif %}{% if not forloop.last %}, {% endif %}{% empty %}Ninguna{% endfor %}</dd>
+    </dl>
+    <h3 class="mt-4 mb-2">Servicios habilitados</h3>
+    <p class="small text-apagado mb-0">{% for s in servicios %}{{ s.servicio.nombre }}{% if s.nivel %} ({{ s.nivel|lower }}){% endif %}{% if not forloop.last %}, {% endif %}{% empty %}Ninguno: no se le pueden asignar servicios.{% endfor %}</p>
+  </section>
+  <div>
+    <section class="tarjeta">
+      <h2 class="mb-2">{% if u.is_active %}Deshabilitar usuario{% else %}Habilitar usuario{% endif %}</h2>
+      <p class="small text-apagado">{% if u.is_active %}No podrá ingresar al sistema. Su historial de atenciones se conserva.{% else %}Podrá volver a ingresar con su contraseña actual.{% endif %}</p>
+      <form method="post" action="{% url 'core:usuario_estado' u.run %}" novalidate>{% csrf_token %}
+        <div class="row g-3">{% campo motivo_form.motivo %}</div>
+        <button class="btn {% if u.is_active %}btn-peligro{% else %}btn-negro{% endif %} mt-3">{% if u.is_active %}Deshabilitar{% else %}Habilitar{% endif %}</button>
+      </form>
+    </section>
+    <section class="tarjeta">
+      <h2 class="mb-2">Restablecer contraseña</h2>
+      <form method="post" action="{% url 'core:usuario_clave' u.run %}" novalidate>{% csrf_token %}
+        <div class="row g-3">{% campo clave_form.password1 "col-12 col-md-6" %}{% campo clave_form.password2 "col-12 col-md-6" %}</div>
+        <button class="btn btn-relieve mt-3">Restablecer</button>
+      </form>
+    </section>
+  </div>
+</div>
+<section class="tarjeta mt-4">
+  <h2 class="mb-3">Historial de estado</h2>
+  {% if historial %}
+  <div class="tabla-scroll"><table class="tabla apilable">
+    <thead><tr><th>Fecha</th><th>Estado</th><th>Motivo</th><th>Responsable</th></tr></thead>
+    <tbody>{% for h in historial %}<tr>
+      <td data-label="Fecha">{{ h.fecha_cambio|date:"d-m-Y H:i" }}</td><td data-label="Estado">{{ h.tipo_estado }}</td>
+      <td data-label="Motivo">{{ h.motivo }}</td><td data-label="Responsable">{{ h.responsable|default:"Sistema" }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}<p class="text-apagado mb-0">Sin cambios de estado registrados.</p>{% endif %}
+</section>
+{% endblock %}

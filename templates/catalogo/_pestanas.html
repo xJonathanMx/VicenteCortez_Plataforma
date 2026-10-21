@@ -1,0 +1,5 @@
+<nav class="pestanas">
+  <a href="{% url 'catalogo:servicios' %}" class="{% if pestana == 'servicios' %}activa{% endif %}">Servicios</a>
+  <a href="{% url 'catalogo:tipos' %}" class="{% if pestana == 'tipos' %}activa{% endif %}">Tipos y comisiones</a>
+  <a href="{% url 'catalogo:insumos' %}" class="{% if pestana == 'insumos' %}activa{% endif %}">Insumos</a>
+</nav>

@@ -1,0 +1,33 @@
+{% extends "base.html" %}{% load vc %}
+{% block titulo %}Giftcard {{ g.codigo }}{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>Giftcard {{ g.codigo }} <span class="estado {{ g.estado|clase_estado }} align-middle">{{ g.get_estado_display }}</span></h1>
+    <p>De {{ g.beneficiario }}{% if g.comprador and g.comprador != g.beneficiario %}, regalo de {{ g.comprador }}{% endif %}</p></div>
+  <a class="btn btn-relieve" href="{% url 'beneficios:inicio' %}"><i data-lucide="arrow-left"></i>Giftcards</a>
+</div>
+<div class="rejilla rejilla-4 mb-4">
+  <div class="tarjeta"><div class="cifra">{{ g.saldo_actual|pesos }}</div><div class="cifra-label">Saldo actual</div></div>
+  <div class="tarjeta"><div class="cifra">{{ g.monto_inicial|pesos }}</div><div class="cifra-label">Monto inicial</div></div>
+  <div class="tarjeta"><div class="cifra" style="font-size:1.4rem">{{ g.fecha_vencimiento|date:"d-m-Y" }}</div><div class="cifra-label">Vencimiento (compra {{ g.fecha_compra|date:"d-m-Y" }})</div></div>
+</div>
+<div class="rejilla rejilla-2">
+  <section class="tarjeta">
+    <h2 class="mb-3">Usos</h2>
+    <ul class="lista">{% for u in usos %}<li class="small"><span>{{ u.fecha_uso|date:"d-m-Y H:i" }}</span><a class="flex-grow-1" href="{% url 'fichas:detalle' u.ficha_id %}">Ficha N° {{ u.ficha_id }}</a><span class="tabular fw-semibold">{{ u.monto_usado|pesos }}</span></li>
+    {% empty %}<li class="text-apagado">Aún no se ha usado. Se descuenta desde la ficha de atención del cliente.</li>{% endfor %}</ul>
+  </section>
+  <section class="tarjeta">
+    {% if g.estado == "deshabilitada" %}
+      <h2>Deshabilitada</h2><p class="mb-0">{{ g.motivo_deshabilitacion }}</p>
+    {% else %}
+      <h2 class="mb-2">Deshabilitar giftcard</h2>
+      <p class="small text-apagado">No se podrá usar, pero su historial se conserva.</p>
+      <form method="post" action="{% url 'beneficios:giftcard_deshabilitar' g.pk %}" novalidate>{% csrf_token %}
+        <div class="row g-3">{% campo motivo_form.motivo %}</div>
+        <button class="btn btn-peligro mt-3">Deshabilitar</button>
+      </form>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

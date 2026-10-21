@@ -73,7 +73,9 @@ python manage.py procesar_envios
 ```
 
 Prográmalo cada 15 minutos (Programador de tareas de Windows o cron). También hay un botón «Enviar pendientes ahora» en *Valoraciones*.
-Sin `WHATSAPP_TOKEN` los WhatsApp se simulan y quedan en el log; sin SMTP los correos salen por consola.
+**Por ahora todos los mensajes se envían por correo electrónico.** El cliente necesita un correo registrado para recibir valoraciones y recordatorios; si no lo tiene, el envío queda marcado con error para que administración lo complete.
+Configura el SMTP en `.env` (`EMAIL_BACKEND`, `EMAIL_HOST`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`); sin eso los correos se muestran en la consola.
+WhatsApp está programado pero apagado. Para activarlo más adelante: `CANALES_ENVIO=email,whatsapp` y las credenciales `WHATSAPP_TOKEN` / `WHATSAPP_PHONE_ID`.
 
 ## Pruebas
 

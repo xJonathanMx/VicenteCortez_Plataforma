@@ -1,4 +1,5 @@
 from django import forms
+from django.conf import settings
 from django.urls import reverse
 from django.utils.html import format_html
 
@@ -31,6 +32,9 @@ class ClienteForm(ModelFormEstilo):
         self.fields["estilista_fijo"].queryset = peluqueros_activos()
         self.fields["estilista_fijo"].empty_label = "Sin estilista fijo"
         self.fields["canal_preferido"].help_text = "Por aquí le llegan las valoraciones y recordatorios."
+        if "whatsapp" not in settings.CANALES_ENVIO:
+            del self.fields["canal_preferido"]  # por ahora todo se envía por correo
+            self.fields["correo"].help_text = "Necesario para enviarle valoraciones y recordatorios."
         if not puede_fijar:
             del self.fields["estilista_fijo"]
         if self.instance.pk:
@@ -50,7 +54,7 @@ class ClienteForm(ModelFormEstilo):
 
     def clean(self):
         d = super().clean()
-        canal = d.get("canal_preferido")
+        canal = d.get("canal_preferido", "email")
         if canal == "whatsapp" and not d.get("telefono") and d.get("correo"):
             d["canal_preferido"] = "email"
         return d

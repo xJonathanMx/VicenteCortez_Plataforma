@@ -99,7 +99,8 @@ class Command(BaseCommand):
 
         canales = {}
         for codigo, nombre in [("whatsapp", "WhatsApp"), ("email", "Correo electrónico")]:
-            canales[codigo], _ = CanalComunicacion.objects.get_or_create(codigo=codigo, defaults={"nombre": nombre})
+            canales[codigo], _ = CanalComunicacion.objects.get_or_create(
+                codigo=codigo, defaults={"nombre": nombre, "activo": codigo == "email"})  # por ahora solo correo
         for tipo, (asunto, cuerpo) in TEXTOS_POR_DEFECTO.items():
             for canal in canales.values():
                 Plantilla.objects.get_or_create(tipo=tipo, canal=canal, defaults={"asunto": asunto, "cuerpo": cuerpo})

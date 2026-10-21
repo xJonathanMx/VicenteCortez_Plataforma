@@ -1,4 +1,5 @@
 from django import forms
+from django.conf import settings
 from django.contrib import messages
 from django.db.models import Avg, Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
@@ -106,9 +107,11 @@ def canales(request):
                 messages.success(request, f"Plantilla «{p}» guardada.")
         return redirect("seguimiento:canales")
     plantillas = [(p, PlantillaForm(instance=p, prefix=f"p{p.pk}"))
-                  for p in Plantilla.objects.select_related("canal").order_by("tipo", "canal__nombre")]
+                  for p in Plantilla.objects.filter(canal__codigo__in=settings.CANALES_ENVIO)
+                  .select_related("canal").order_by("tipo", "canal__nombre")]
     return render(request, "seguimiento/canales.html", {"canales": CanalComunicacion.objects.all(),
-                                                         "plantillas": plantillas})
+                                                         "plantillas": plantillas,
+                                                         "habilitados": settings.CANALES_ENVIO})
 
 
 def valorar_publico(request, token):

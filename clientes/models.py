@@ -29,7 +29,7 @@ class Cliente(models.Model):
     correo = models.EmailField("correo", max_length=120, blank=True)
     fecha_nac = models.DateField("fecha de nacimiento", null=True, blank=True)
     genero = models.CharField("género", max_length=1, choices=GENEROS, blank=True)
-    canal_preferido = models.CharField("canal de contacto", max_length=10, choices=CANALES, default="whatsapp")
+    canal_preferido = models.CharField("canal de contacto", max_length=10, choices=CANALES, default="email")
     estilista_fijo = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
                                        related_name="clientes_fijos", verbose_name="estilista fijo")
     activo = models.BooleanField("activo", default=True, db_column="c_activo")
@@ -60,7 +60,10 @@ class Cliente(models.Model):
 
     @property
     def datos_completos(self):
-        return bool(self.telefono or self.correo)
+        """Tiene cómo recibir valoraciones y recordatorios con los canales habilitados."""
+        if "whatsapp" in settings.CANALES_ENVIO:
+            return bool(self.telefono or self.correo)
+        return bool(self.correo)
 
     def resumen(self):
         """RF-C-06: última visita, cantidad de visitas y estilista fijo."""

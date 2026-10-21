@@ -121,6 +121,10 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "Peluquería Vicente Cortez <no-responder@vicentecortez.cl>")
 
+# Canales por los que se envían valoraciones y recordatorios.
+# Por ahora SOLO correo. Para activar WhatsApp más adelante: CANALES_ENVIO=email,whatsapp
+CANALES_ENVIO = [c.strip() for c in os.getenv("CANALES_ENVIO", "email").split(",") if c.strip()]
+
 # WhatsApp Cloud API (Meta). Sin token, los envíos se simulan y quedan en el log.
 WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN", "")
 WHATSAPP_PHONE_ID = os.getenv("WHATSAPP_PHONE_ID", "")

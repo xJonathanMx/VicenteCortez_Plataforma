@@ -1,6 +1,6 @@
 """
 Motor de seguimiento: programa valoraciones y recordatorios, y los envía por
-correo o WhatsApp. Se ejecuta con `python manage.py procesar_envios`
+correo (por ahora el único canal habilitado, ver CANALES_ENVIO) o WhatsApp. Se ejecuta con `python manage.py procesar_envios`
 (programarlo cada 15 minutos con el Programador de tareas o cron).
 """
 import calendar
@@ -116,8 +116,12 @@ def normalizar_telefono(telefono):
 
 
 def elegir_canal(cliente):
+    activos = {c.codigo: c for c in CanalComunicacion.objects.filter(activo=True, codigo__in=settings.CANALES_ENVIO)}
+    if list(activos) == ["email"]:  # configuración actual: todo por correo
+        if not cliente.correo:
+            raise ErrorEnvio("El cliente no tiene correo registrado.", definitivo=True)
+        return activos["email"]
     preferido = cliente.canal_preferido
-    activos = {c.codigo: c for c in CanalComunicacion.objects.filter(activo=True)}
     if preferido == "whatsapp" and not cliente.telefono and cliente.correo:
         preferido = "email"
     if preferido == "email" and not cliente.correo and cliente.telefono:

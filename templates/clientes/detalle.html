@@ -25,11 +25,10 @@
     <dl class="definiciones">
       <dt>Teléfono</dt><dd>{{ c.telefono|default:"Falta registrar" }}</dd>
       <dt>Correo</dt><dd>{{ c.correo|default:"Falta registrar" }}</dd>
-      <dt>Canal de aviso</dt><dd>{{ c.get_canal_preferido_display }}</dd>
       <dt>Nacimiento</dt><dd>{{ c.fecha_nac|date:"d-m-Y"|default:"—" }}</dd>
       <dt>Género</dt><dd>{{ c.get_genero_display|default:"—" }}</dd>
     </dl>
-    {% if not c.datos_completos %}<div class="aviso warning mt-3 mb-0"><i data-lucide="triangle-alert"></i><div>Sin teléfono ni correo no podemos enviarle valoraciones ni recordatorios.</div></div>{% endif %}
+    {% if not c.datos_completos %}<div class="aviso warning mt-3 mb-0"><i data-lucide="triangle-alert"></i><div>Sin correo no podemos enviarle valoraciones ni recordatorios.</div></div>{% endif %}
     {% puede "asignar_peluquero" as asigna %}
     {% if asigna %}
     <form method="post" action="{% url 'clientes:estilista' c.run %}" class="mt-4 d-flex gap-2 align-items-end">{% csrf_token %}

@@ -186,14 +186,18 @@ class SeguimientoTests(Base):
         procesar_pendientes(hoy=timezone.localdate() + timedelta(days=1))
         v.refresh_from_db()
         self.assertEqual(v.estado, "enviada")
+        # Por ahora todo sale por correo, aunque el cliente tenga teléfono.
+        from django.core import mail
+        correo = next(m for m in mail.outbox if v.token in m.body)
+        self.assertEqual(correo.to, [self.cliente.correo])
+        self.assertEqual(v.envios.get().canal.codigo, "email")
         r = self.client.post(reverse("valorar", args=[v.token]), {"calificacion": "5", "comentario": "Excelente"})
         self.assertContains(r, "Gracias")
         v.refresh_from_db()
         self.assertEqual((v.estado, v.calificacion), ("respondida", 5))
 
-    def test_telefono_invalido_marca_error(self):
-        self.cliente.telefono = "123"
-        self.cliente.canal_preferido = "whatsapp"
+    def test_sin_correo_marca_error(self):
+        self.cliente.correo = ""
         self.cliente.save()
         ficha = fs.abrir_ficha(self.admin, self.cliente)
         d = fs.agregar_servicio(ficha, Servicio.objects.get(nombre="Corte dama"), self.pelu, "basico", self.admin)

@@ -1,3 +1,6 @@
+import os
+
+from django.conf import settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -36,9 +39,20 @@ def _items(usuario, menu, ruta):
     return salida
 
 
+def version_estaticos():
+    """Cambia cuando cambian app.css o app.js, para que el navegador no use una copia vieja."""
+    marcas = []
+    for archivo in ("css/app.css", "js/app.js"):
+        try:
+            marcas.append(int(os.path.getmtime(settings.BASE_DIR / "static" / archivo)))
+        except OSError:
+            pass
+    return max(marcas, default=0)
+
+
 def navegacion(request):
     hoy = timezone.localdate()
-    ctx = {"fecha_hoy": fecha_larga(hoy)}
+    ctx = {"fecha_hoy": fecha_larga(hoy), "v": version_estaticos()}
     if request.user.is_authenticated:
         ruta = request.path
         ctx["menu_principal"] = _items(request.user, MENU_PRINCIPAL, ruta)

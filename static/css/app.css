@@ -337,3 +337,24 @@ a { color: var(--tinta); }
 .grupo-servicios + .grupo-servicios { margin-top: 16px; }
 .grupo-servicios .cabecera { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
 .grupo-servicios .cabecera strong { font-size: .9rem; color: var(--tinta); }
+
+
+/* ---------- casillas neumórficas: redondas, hundidas; al marcar se rellenan con el acento ---------- */
+.opcion input[type=checkbox], .form-check-input[type=checkbox] {
+  appearance: none; -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; margin: 0; flex: none;
+  background: var(--bg); border: 0; box-shadow: var(--hundido-s); cursor: pointer; position: relative;
+  transition: background .15s, box-shadow .15s;
+}
+.form-check-input[type=checkbox] { margin-top: .15em; margin-left: -1.6em; }
+.opcion input[type=checkbox]:checked, .form-check-input[type=checkbox]:checked {
+  background: var(--tinta); box-shadow: 2px 2px 5px var(--sombra-acento);
+}
+.opcion input[type=checkbox]:checked::after, .form-check-input[type=checkbox]:checked::after {
+  content: ""; position: absolute; left: 7px; top: 3.5px; width: 6px; height: 11px;
+  border: solid var(--sobre-tinta); border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+/* Dentro de una opción marcada (fondo de acento) la casilla se invierte para seguir viéndose. */
+.opcion:has(input:checked) input[type=checkbox] { background: var(--sobre-tinta); box-shadow: none; }
+.opcion:has(input:checked) input[type=checkbox]::after { border-color: var(--tinta); }
+.opcion input[type=checkbox]:focus-visible, .form-check-input[type=checkbox]:focus-visible { outline: 2px solid var(--tinta); outline-offset: 2px; }
+.form-check-input[type=checkbox]:focus { box-shadow: var(--hundido-s); }

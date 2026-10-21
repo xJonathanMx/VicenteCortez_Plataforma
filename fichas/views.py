@@ -5,6 +5,7 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
@@ -126,7 +127,8 @@ def notas(request, pk):
         f = form.save(commit=False)
         f.modificado_por = request.user
         f.save()
-        messages.success(request, "Diagnóstico y observaciones guardados.")
+        return redirect(f"{reverse('fichas:detalle', args=[pk])}?guardado=diagnostico#diagnostico")
+    messages.error(request, "No se pudo guardar el diagnóstico. Revisa el texto.")
     return redirect("fichas:detalle", pk=pk)
 
 
@@ -227,7 +229,7 @@ def notas_servicio(request, pk):
         obj = form.save(commit=False)
         obj.modificado_por = request.user
         obj.save()
-        messages.success(request, "Fórmula y producto guardados.")
+        return redirect(f"{reverse('fichas:detalle', args=[d.ficha_id])}?guardado=s{d.pk}#s{d.pk}")
     return redirect("fichas:detalle", pk=d.ficha_id)
 
 

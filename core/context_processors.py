@@ -35,8 +35,15 @@ def _items(usuario, menu, ruta):
     for texto, url, icono, priv, prefijo in menu:
         if priv and not usuario.tiene_privilegio(priv):
             continue
-        salida.append({"texto": texto, "url": reverse(url), "icono": icono, "activo": ruta.startswith(prefijo)})
+        salida.append({"texto": texto, "url": reverse(url), "icono": icono, "prefijo": prefijo, "activo": False})
     return salida
+
+
+def _marcar_activo(items, ruta):
+    """Marca solo la opción más específica: /fichas/nueva/ es «Crear ficha», no también «Historial»."""
+    coinciden = [i for i in items if ruta.startswith(i["prefijo"])]
+    if coinciden:
+        max(coinciden, key=lambda i: len(i["prefijo"]))["activo"] = True
 
 
 def version_estaticos():
@@ -57,5 +64,6 @@ def navegacion(request):
         ruta = request.path
         ctx["menu_principal"] = _items(request.user, MENU_PRINCIPAL, ruta)
         ctx["menu_admin"] = _items(request.user, MENU_ADMIN, ruta)
+        _marcar_activo(ctx["menu_principal"] + ctx["menu_admin"], ruta)
         ctx["ajustes_activo"] = ruta.startswith("/ajustes")
     return ctx

@@ -108,7 +108,36 @@
     });
   }
 
+  // Formularios con confirmación junto al botón: "Guardado" tras guardar, "Cambios sin guardar" al editar
+  function guardables() {
+    var clave = new URLSearchParams(location.search).get("guardado");
+    if (clave) {
+      var marca = document.querySelector('[data-clave="' + clave + '"]');
+      if (marca) {
+        marca.classList.remove("d-none");
+        var det = marca.closest("details");
+        if (det) det.open = true;
+      }
+      // Limpia el parámetro para que al recargar no vuelva a decir "Guardado".
+      history.replaceState(null, "", location.pathname + location.hash);
+    }
+    var pendientes = 0;
+    document.querySelectorAll("form[data-guardable]").forEach(function (f) {
+      var sucio = false;
+      f.addEventListener("input", function () {
+        if (!sucio) { sucio = true; pendientes++; }
+        f.querySelectorAll("[data-guardado]").forEach(function (e) { e.classList.add("d-none"); });
+        f.querySelectorAll("[data-sin-guardar]").forEach(function (e) { e.classList.remove("d-none"); });
+      });
+      f.addEventListener("submit", function () { if (sucio) { sucio = false; pendientes--; } });
+    });
+    // Avisa antes de salir de la página si quedó algo escrito sin guardar.
+    window.addEventListener("beforeunload", function (e) {
+      if (pendientes > 0) { e.preventDefault(); e.returnValue = ""; }
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
-    iconos(); tema(); menu(); cronometros(); confirmaciones(); unEnvio(); sugerencias();
+    iconos(); tema(); guardables(); menu(); cronometros(); confirmaciones(); unEnvio(); sugerencias();
   });
 })();

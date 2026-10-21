@@ -33,12 +33,17 @@
     {% endif %}
   </section>
 
-  <section class="tarjeta">
+  <section class="tarjeta" id="diagnostico">
     <h2 class="mb-3">Diagnóstico inicial</h2>
     {% if puede_editar %}
-      <form method="post" action="{% url 'fichas:notas' f.pk %}">{% csrf_token %}
+      <form method="post" action="{% url 'fichas:notas' f.pk %}" data-guardable>{% csrf_token %}
         <div class="row g-3">{% campo notas_form.diagnostico %}{% campo notas_form.observaciones %}</div>
-        <button class="btn btn-relieve btn-sm mt-3">Guardar</button>
+        <div class="d-flex align-items-center gap-2 flex-wrap mt-3">
+          <button class="btn btn-relieve btn-sm">Guardar diagnóstico</button>
+          <span class="estado ok d-none" data-guardado data-clave="diagnostico">Guardado</span>
+          <span class="estado alerta d-none" data-sin-guardar>Cambios sin guardar</span>
+        </div>
+        {% if f.modificado_por %}<p class="form-text mb-0 mt-2">Última edición: {{ f.modificado_en|date:"d-m-Y H:i" }} por {{ f.modificado_por.nombre_corto }}</p>{% endif %}
       </form>
     {% else %}
       <p class="mb-2">{{ f.diagnostico|default:"Sin diagnóstico registrado."|linebreaksbr }}</p>
@@ -54,7 +59,7 @@
   </div>
 
   {% for d in servicios %}
-  <article class="servicio-ficha tarjeta{% if d.estado == 'en_proceso' %} en-proceso{% endif %}">
+  <article class="servicio-ficha tarjeta{% if d.estado == 'en_proceso' %} en-proceso{% endif %}" id="s{{ d.pk }}">
     <div class="d-flex justify-content-between gap-3 flex-wrap">
       <div>
         <h3 class="mb-1">{{ d.servicio.nombre }} <span class="text-apagado fw-normal">{{ d.get_variante_display }}</span></h3>
@@ -107,12 +112,16 @@
         <div class="col-7 col-md-3"><label class="form-label">Observación</label>{{ insumo_form.observacion }}</div>
         <div class="col-12 col-md-2"><button class="btn btn-relieve w-100">Agregar</button></div>
       </form>
-      <form method="post" action="{% url 'fichas:notas_servicio' d.pk %}" class="mt-3">{% csrf_token %}
+      <form method="post" action="{% url 'fichas:notas_servicio' d.pk %}" class="mt-3" data-guardable>{% csrf_token %}
         <div class="row g-2">
           <div class="col-12 col-md-6"><label class="form-label" for="f{{ d.pk }}">Mezcla o fórmula</label><textarea class="form-control" rows="2" id="f{{ d.pk }}" name="formula">{{ d.formula }}</textarea></div>
           <div class="col-12 col-md-6"><label class="form-label" for="p{{ d.pk }}">Producto (marca y calidad)</label><textarea class="form-control" rows="2" id="p{{ d.pk }}" name="observacion_producto">{{ d.observacion_producto }}</textarea></div>
         </div>
-        <button class="btn btn-relieve btn-sm mt-2">Guardar notas</button>
+        <div class="d-flex align-items-center gap-2 flex-wrap mt-2">
+          <button class="btn btn-relieve btn-sm">Guardar fórmula y producto</button>
+          <span class="estado ok d-none" data-guardado data-clave="s{{ d.pk }}">Guardado</span>
+          <span class="estado alerta d-none" data-sin-guardar>Cambios sin guardar</span>
+        </div>
       </form>
       {% if cierra_otros and d.estado == "en_proceso" %}
       <form method="post" action="{% url 'fichas:cierre_manual' d.pk %}" class="row g-2 mt-3 align-items-end" novalidate>{% csrf_token %}

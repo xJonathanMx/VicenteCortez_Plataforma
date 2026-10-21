@@ -1,3 +1,4 @@
+import re
 from datetime import date
 
 from django import forms
@@ -85,19 +86,21 @@ def guardar_metas(request):
     n = 0
     for p in Usuario.objects.filter(is_active=True, roles__codigo="peluquero").distinct():
         meta_txt = request.POST.get(f"meta_{p.pk}", "").strip()
-        base_txt = request.POST.get(f"base_{p.pk}", "").strip().replace(".", "")
+        base_txt = re.sub(r"\D", "", request.POST.get(f"base_{p.pk}", ""))  # acepta "80.000" o "$80.000"
+        premio = request.POST.get(f"premio_{p.pk}", "").strip()[:120]
         if not meta_txt:
             continue
         existente = MetaMensual.objects.filter(peluquero=p, mes=mes, anio=anio).first()
         if existente and existente.cerrada:
             continue
         try:
-            meta, base = int(meta_txt), int(base_txt or 0)
+            meta, base = int(re.sub(r"\D", "", meta_txt)), int(base_txt or 0)
         except ValueError:
             messages.error(request, f"Revisa los números de {p.nombre_corto}.")
             continue
         MetaMensual.objects.update_or_create(peluquero=p, mes=mes, anio=anio,
-                                             defaults={"meta_cliente": max(meta, 1), "incentivo_base": base})
+                                             defaults={"meta_cliente": max(meta, 1), "incentivo_base": base,
+                                                       "premio": premio})
         n += 1
     messages.success(request, f"Metas guardadas para {n} peluquero{'s' if n != 1 else ''}.")
     return redirect(f"{reverse('metas:panel')}?mes={anio}-{mes}")

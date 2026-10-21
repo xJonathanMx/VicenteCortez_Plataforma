@@ -98,7 +98,8 @@ LANGUAGE_CODE = "es-cl"
 TIME_ZONE = "America/Santiago"
 USE_I18N = True
 USE_TZ = True
-USE_THOUSAND_SEPARATOR = True
+# Sin separador automático: rompe números en formularios (ej. "2 026"). Los montos usan el filtro |pesos.
+USE_THOUSAND_SEPARATOR = False
 
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]

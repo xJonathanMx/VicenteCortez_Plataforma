@@ -22,7 +22,10 @@ class MetaMensual(models.Model):
     mes = models.PositiveSmallIntegerField("mes")
     anio = models.PositiveSmallIntegerField("año")
     meta_cliente = models.PositiveIntegerField("meta de atenciones")
-    incentivo_base = models.PositiveIntegerField("incentivo base ($)", default=0)
+    incentivo_base = models.PositiveIntegerField("incentivo base ($)", default=0,
+                                                 help_text="Puede ser 0 si el incentivo es solo un premio.")
+    premio = models.CharField("premio o regalo", max_length=120, blank=True,
+                              help_text="Incentivo no monetario al cumplir la meta (ej. kit de productos).")
     # Se congelan al cerrar el mes (RF-CI-13, RF-CI-15).
     cerrada = models.BooleanField(default=False)
     resultado_logrado = models.PositiveIntegerField("atenciones logradas", null=True, blank=True)

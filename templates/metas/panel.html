@@ -13,13 +13,14 @@
   <form method="post" action="{% url 'metas:guardar' %}">{% csrf_token %}
     <input type="hidden" name="mes" value="{{ mes }}"><input type="hidden" name="anio" value="{{ anio }}">
     <div class="tabla-scroll"><table class="tabla apilable">
-      <thead><tr><th>Peluquero</th><th>Meta (atenciones)</th><th>Incentivo base ($)</th><th>Avance</th><th class="num">Incentivo</th></tr></thead>
+      <thead><tr><th>Peluquero</th><th>Meta (atenciones)</th><th>Incentivo base ($)</th><th>Premio o regalo</th><th>Avance</th><th class="num">Incentivo</th></tr></thead>
       <tbody>{% for f in filas %}<tr>
         <td data-label="Peluquero" class="fw-semibold">{{ f.p.nombre_corto }}</td>
-        <td data-label="Meta"><input class="form-control" style="max-width:110px" name="meta_{{ f.p.pk }}" inputmode="numeric" value="{{ f.meta.meta_cliente|default_if_none:'' }}" {% if f.meta.cerrada or not gestiona %}disabled{% endif %} aria-label="Meta de {{ f.p.nombre_corto }}"></td>
-        <td data-label="Incentivo base"><input class="form-control" style="max-width:140px" name="base_{{ f.p.pk }}" inputmode="numeric" value="{{ f.meta.incentivo_base|default_if_none:'' }}" {% if f.meta.cerrada or not gestiona %}disabled{% endif %} aria-label="Incentivo base de {{ f.p.nombre_corto }}"></td>
+        <td data-label="Meta"><input class="form-control" style="min-width:80px;max-width:110px" name="meta_{{ f.p.pk }}" inputmode="numeric" value="{{ f.meta.meta_cliente|default_if_none:'' }}" {% if f.meta.cerrada or not gestiona %}disabled{% endif %} aria-label="Meta de {{ f.p.nombre_corto }}"></td>
+        <td data-label="Incentivo base"><input class="form-control" style="min-width:120px;max-width:150px" name="base_{{ f.p.pk }}" inputmode="numeric" value="{{ f.meta.incentivo_base|default_if_none:'' }}" {% if f.meta.cerrada or not gestiona %}disabled{% endif %} aria-label="Incentivo base de {{ f.p.nombre_corto }}"></td>
+        <td data-label="Premio"><input class="form-control" style="min-width:160px" name="premio_{{ f.p.pk }}" maxlength="120" value="{{ f.meta.premio|default:'' }}" placeholder="Opcional" {% if f.meta.cerrada or not gestiona %}disabled{% endif %} aria-label="Premio de {{ f.p.nombre_corto }}"></td>
         <td data-label="Avance" style="min-width:170px">{% if f.avance %}<div class="d-flex align-items-center gap-2"><div class="barra-progreso flex-grow-1"><span style="width: {{ f.avance.barra }}%"></span></div><span class="small tabular">{{ f.avance.logradas }}/{{ f.meta.meta_cliente }}</span></div>{% else %}<span class="small text-apagado">Sin meta</span>{% endif %}</td>
-        <td data-label="Incentivo" class="num">{% if f.avance %}{{ f.avance.incentivo|pesos }}{% else %}—{% endif %}</td>
+        <td data-label="Incentivo" class="num">{% if f.avance %}{{ f.avance.incentivo|pesos }}{% if f.meta.premio %}<div class="small text-apagado">{% if f.avance.cumplida %}+ {{ f.meta.premio }}{% else %}Premio al cumplir{% endif %}</div>{% endif %}{% else %}—{% endif %}</td>
       </tr>{% endfor %}</tbody>
     </table></div>
     {% if gestiona and not cerrado %}<button class="btn btn-negro mt-3">Guardar metas</button>{% endif %}

@@ -55,8 +55,8 @@
       </div>
       <div class="barra-progreso mb-2"><span style="width: {{ mi_meta.barra }}%"></span></div>
       <p class="small text-apagado mb-0">
-        {% if mi_meta.cumplida %}Meta cumplida. Incentivo informado: <strong class="text-dark">{{ mi_meta.incentivo|pesos }}</strong>.
-        {% else %}Te faltan {{ mi_meta.faltan }} atenciones. Incentivo según avance actual: {{ mi_meta.incentivo|pesos }}.{% endif %}
+        {% if mi_meta.cumplida %}Meta cumplida. Incentivo informado: <strong class="text-dark">{{ mi_meta.incentivo|pesos }}</strong>{% if mi_meta.meta.premio %} y {{ mi_meta.meta.premio }}{% endif %}.
+        {% else %}Te faltan {{ mi_meta.faltan }} atenciones. Incentivo según avance actual: {{ mi_meta.incentivo|pesos }}.{% if mi_meta.meta.premio %} Premio al cumplir: {{ mi_meta.meta.premio }}.{% endif %}{% endif %}
       </p>
       <a class="btn btn-relieve btn-sm mt-3" href="{% url 'metas:mias' %}">Ver historial y comisiones</a>
     {% else %}

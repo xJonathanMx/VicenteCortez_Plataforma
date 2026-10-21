@@ -123,7 +123,7 @@ a { color: var(--tinta); }
 .encabezado h1 { margin: 0; }
 .encabezado p { margin: 4px 0 0; color: var(--apagado); }
 
-.boton-menu { display: none; }
+.btn.boton-menu { display: none; } /* solo en celular/tablet; ver media query */
 
 /* ---------- superficies ---------- */
 .pastilla-fecha {
@@ -132,6 +132,7 @@ a { color: var(--tinta); }
 }
 .tarjeta { background: var(--bg); border-radius: var(--radio-l); box-shadow: var(--relieve); padding: 22px; }
 .tarjeta + .tarjeta { margin-top: 22px; }
+.rejilla > .tarjeta { margin-top: 0; } /* en rejilla el espacio lo da el gap */
 .tarjeta-titulo { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
 .tarjeta-titulo h2, .tarjeta-titulo h3 { margin: 0; }
 .hundido { border-radius: var(--radio-m); box-shadow: var(--hundido); padding: 16px; }
@@ -289,7 +290,7 @@ a { color: var(--tinta); }
   .lateral.abierto { transform: none; }
   .velo { position: fixed; inset: 0; background: var(--velo); backdrop-filter: blur(2px); z-index: 1040; display: none; }
   .velo.visible { display: block; }
-  .boton-menu { display: inline-flex; }
+  .btn.boton-menu { display: inline-flex; }
   .barra-superior { justify-content: space-between; flex-direction: row-reverse; }
   .principal { padding: 4px 4px 40px; }
   .tarjeta { padding: 18px; }

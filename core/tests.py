@@ -227,3 +227,22 @@ class GiftcardTests(Base):
                                     fecha_vencimiento=timezone.localdate() - timedelta(days=1), creada_por=self.admin)
         with self.assertRaises(ValidationError):
             usar_giftcard(g, FichaAtencion.objects.first(), 1000, self.admin)
+
+
+class MetasTests(Base):
+    def test_guardar_metas_con_premio_e_incentivo_cero(self):
+        """Regresión: el año 2026 llegaba como '2 026' y el guardado fallaba."""
+        from metas.models import MetaMensual
+        self.entrar(self.admin)
+        hoy = timezone.localdate()
+        r = self.client.get(reverse("metas:panel"))
+        self.assertContains(r, f'name="anio" value="{hoy.year}"')
+        r = self.client.post(reverse("metas:guardar"), {
+            "mes": hoy.month, "anio": hoy.year,
+            f"meta_{self.pelu.pk}": "30", f"base_{self.pelu.pk}": "$80.000", f"premio_{self.pelu.pk}": "Kit Kérastase",
+            "meta_17777777": "20", "base_17777777": "0", "premio_17777777": "Día libre"})
+        self.assertEqual(r.status_code, 302)
+        m = MetaMensual.objects.get(peluquero=self.pelu, mes=hoy.month, anio=hoy.year)
+        self.assertEqual((m.meta_cliente, m.incentivo_base, m.premio), (30, 80000, "Kit Kérastase"))
+        m2 = MetaMensual.objects.get(peluquero_id="17777777", mes=hoy.month, anio=hoy.year)
+        self.assertEqual((m2.incentivo_base, m2.premio), (0, "Día libre"))

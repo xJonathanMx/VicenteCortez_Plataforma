@@ -116,3 +116,49 @@ class EnvioMensaje(models.Model):
     class Meta:
         db_table = "envio_mensaje"
         ordering = ["-fecha"]
+
+
+class ConfiguracionCorreo(models.Model):
+    """Cuenta de correo con que se envían los mensajes. Se edita desde la plataforma (un solo registro)."""
+    SEGURIDAD = [("tls", "STARTTLS (puerto 587)"), ("ssl", "SSL (puerto 465)"), ("ninguna", "Sin cifrado")]
+
+    activo = models.BooleanField("enviar correos reales", default=False,
+                                 help_text="Apagado: los correos solo se muestran en la consola del servidor.")
+    servidor = models.CharField("servidor SMTP", max_length=120, default="smtp.gmail.com")
+    puerto = models.PositiveIntegerField("puerto", default=587)
+    seguridad = models.CharField("seguridad", max_length=10, choices=SEGURIDAD, default="tls")
+    usuario = models.CharField("correo de la cuenta", max_length=120, blank=True)
+    clave_cifrada = models.TextField("contraseña (cifrada)", blank=True)
+    remitente_nombre = models.CharField("nombre del remitente", max_length=80, default="Peluquería Vicente Cortez")
+    actualizado_en = models.DateTimeField(auto_now=True)
+    actualizado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True,
+                                        related_name="+")
+
+    class Meta:
+        db_table = "configuracion_correo"
+        verbose_name = "configuración de correo"
+
+    @classmethod
+    def actual(cls):
+        return cls.objects.get_or_create(pk=1)[0]
+
+    @property
+    def tiene_clave(self):
+        return bool(self.clave_cifrada)
+
+    @property
+    def remitente(self):
+        return f"{self.remitente_nombre} <{self.usuario}>" if self.usuario else ""
+
+    def fijar_clave(self, clave):
+        from core.correo import cifrar
+        self.clave_cifrada = cifrar(clave)
+
+    def clave(self):
+        from core.correo import descifrar
+        return descifrar(self.clave_cifrada)
+
+    @property
+    def lista(self):
+        """Tiene todo lo necesario para enviar de verdad."""
+        return self.activo and bool(self.servidor and self.usuario and self.clave_cifrada)

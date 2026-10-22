@@ -362,3 +362,60 @@ class CorreoPruebaTests(Base):
         self.assertEqual(mail.outbox[-1].to, ["prueba@vicentecortez.cl"])
         r = self.client.post(reverse("seguimiento:canales"), {"probar_correo": "no-es-correo"}, follow=True)
         self.assertContains(r, "no es un correo válido")
+
+
+class ConfiguracionCorreoTests(Base):
+    def test_guardar_cuenta_cifra_la_clave(self):
+        from seguimiento.models import ConfiguracionCorreo
+        self.entrar(self.admin)
+        datos = {"guardar_correo": "1", "correo-proveedor": "gmail", "correo-usuario": "peluqueria@gmail.com",
+                 "correo-clave": "abcd efgh ijkl mnop", "correo-remitente_nombre": "Peluquería Vicente Cortez",
+                 "correo-servidor": "smtp.gmail.com", "correo-puerto": "587", "correo-seguridad": "tls",
+                 "correo-activo": "on"}
+        r = self.client.post(reverse("seguimiento:canales"), datos)
+        self.assertEqual(r.status_code, 302)
+        conf = ConfiguracionCorreo.actual()
+        self.assertTrue(conf.lista)
+        self.assertNotIn("abcd", conf.clave_cifrada)            # no queda en texto plano
+        self.assertEqual(conf.clave(), "abcd efgh ijkl mnop")   # pero se puede usar para enviar
+        # Guardar de nuevo sin escribir la clave la mantiene.
+        datos["correo-clave"] = ""
+        datos["correo-remitente_nombre"] = "VC"
+        self.client.post(reverse("seguimiento:canales"), datos)
+        self.assertEqual(ConfiguracionCorreo.actual().clave(), "abcd efgh ijkl mnop")
+        # La pantalla nunca muestra la clave.
+        self.assertNotContains(self.client.get(reverse("seguimiento:canales")), "abcd efgh")
+
+    def test_no_activa_sin_clave(self):
+        self.entrar(self.admin)
+        r = self.client.post(reverse("seguimiento:canales"), {
+            "guardar_correo": "1", "correo-usuario": "peluqueria@gmail.com", "correo-clave": "",
+            "correo-remitente_nombre": "VC", "correo-servidor": "smtp.gmail.com", "correo-puerto": "587",
+            "correo-seguridad": "tls", "correo-activo": "on"})
+        self.assertContains(r, "Falta la contraseña de aplicación.")
+
+    def test_backend_usa_la_cuenta_guardada(self):
+        from unittest import mock
+        from django.core.mail import EmailMessage
+        from core.correo import BackendConfigurable
+        from seguimiento.models import ConfiguracionCorreo
+        conf = ConfiguracionCorreo.actual()
+        conf.usuario, conf.activo = "peluqueria@gmail.com", True
+        conf.fijar_clave("secreta")
+        conf.save()
+        with mock.patch("core.correo.SMTPBackend") as smtp:
+            smtp.return_value.send_messages.return_value = 1
+            m = EmailMessage("Hola", "Cuerpo", None, ["cliente@correo.cl"])
+            BackendConfigurable().send_messages([m])
+        kwargs = smtp.call_args.kwargs
+        self.assertEqual((kwargs["host"], kwargs["username"], kwargs["password"], kwargs["use_tls"]),
+                         ("smtp.gmail.com", "peluqueria@gmail.com", "secreta", True))
+        self.assertIn("peluqueria@gmail.com", m.from_email)
+
+    def test_apagado_va_a_consola(self):
+        from unittest import mock
+        from core.correo import BackendConfigurable
+        with mock.patch("core.correo.SMTPBackend") as smtp, mock.patch("core.correo.ConsolaBackend") as consola:
+            BackendConfigurable().send_messages([])
+        smtp.assert_not_called()
+        consola.assert_called_once()

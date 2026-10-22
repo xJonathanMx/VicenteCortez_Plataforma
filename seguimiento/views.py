@@ -6,6 +6,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.db.models import Avg, Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
@@ -14,7 +15,7 @@ from core.models import Usuario
 from core.permisos import privilegio_requerido
 
 from . import servicios as ss
-from .models import CanalComunicacion, Plantilla, Recordatorio, Valoracion
+from .models import CanalComunicacion, ConfiguracionCorreo, Plantilla, Recordatorio, Valoracion
 
 
 class FiltroValoracionesForm(FormEstilo):
@@ -30,6 +31,42 @@ class PlantillaForm(ModelFormEstilo):
         model = Plantilla
         fields = ["asunto", "cuerpo"]
         widgets = {"cuerpo": forms.Textarea(attrs={"rows": 4})}
+
+
+class ConfiguracionCorreoForm(ModelFormEstilo):
+    PROVEEDORES = [("gmail", "Gmail"), ("outlook", "Outlook / Hotmail"), ("otro", "Otro")]
+    proveedor = forms.ChoiceField(choices=PROVEEDORES, label="Proveedor", required=False)
+    clave = forms.CharField(label="Contraseña de aplicación", required=False, strip=True,
+                            widget=forms.PasswordInput(render_value=False, attrs={"autocomplete": "new-password"}))
+
+    class Meta:
+        model = ConfiguracionCorreo
+        fields = ["activo", "usuario", "remitente_nombre", "servidor", "puerto", "seguridad"]
+        labels = {"usuario": "Correo de la cuenta"}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.order_fields(["proveedor", "usuario", "clave", "remitente_nombre", "servidor", "puerto", "seguridad", "activo"])
+        servidor = (self.instance.servidor or "").lower()
+        self.fields["proveedor"].initial = ("gmail" if "gmail" in servidor else
+                                            "outlook" if "office365" in servidor or "outlook" in servidor else "otro")
+        self.fields["usuario"].widget = forms.EmailInput(attrs={"class": "form-control", "inputmode": "email",
+                                                                "placeholder": "peluqueria@gmail.com"})
+        self.fields["clave"].help_text = (
+            "Ya hay una contraseña guardada. Déjalo vacío para mantenerla." if self.instance.tiene_clave
+            else "En Gmail no es tu contraseña normal: crea una «contraseña de aplicación».")
+        if self.instance.tiene_clave:
+            self.fields["clave"].widget.attrs["placeholder"] = "•••••••• (guardada)"
+        self.fields["activo"].help_text = "Apagado: modo prueba, los correos solo se muestran en la consola."
+
+    def clean(self):
+        d = super().clean()
+        if d.get("activo"):
+            if not d.get("usuario"):
+                self.add_error("usuario", "Indica el correo de la cuenta para poder enviar.")
+            if not d.get("clave") and not self.instance.tiene_clave:
+                self.add_error("clave", "Falta la contraseña de aplicación.")
+        return d
 
 
 class RespuestaForm(forms.Form):
@@ -99,6 +136,19 @@ def canales(request):
     if request.method == "POST":
         if "probar_correo" in request.POST:
             return probar_correo(request)
+        if "guardar_correo" in request.POST:
+            form = ConfiguracionCorreoForm(request.POST, instance=ConfiguracionCorreo.actual(), prefix="correo")
+            if form.is_valid():
+                conf = form.save(commit=False)
+                if form.cleaned_data.get("clave"):
+                    conf.fijar_clave(form.cleaned_data["clave"])
+                conf.actualizado_por = request.user
+                conf.save()
+                messages.success(request, "Cuenta de correo guardada. " + (
+                    "Los correos ya se envían de verdad: prueba con el botón de abajo." if conf.lista
+                    else "Sigue en modo prueba hasta que actives «Enviar correos reales»."))
+                return redirect(f"{reverse('seguimiento:canales')}#correo")
+            return _render_canales(request, form)
         if "canal" in request.POST:
             c = get_object_or_404(CanalComunicacion, pk=request.POST["canal"])
             c.activo = not c.activo
@@ -111,13 +161,18 @@ def canales(request):
                 form.save()
                 messages.success(request, f"Plantilla «{p}» guardada.")
         return redirect("seguimiento:canales")
+    return _render_canales(request)
+
+
+def _render_canales(request, correo_form=None):
+    conf = ConfiguracionCorreo.actual()
     plantillas = [(p, PlantillaForm(instance=p, prefix=f"p{p.pk}"))
                   for p in Plantilla.objects.filter(canal__codigo__in=settings.CANALES_ENVIO)
                   .select_related("canal").order_by("tipo", "canal__nombre")]
     return render(request, "seguimiento/canales.html", {
         "canales": CanalComunicacion.objects.all(), "plantillas": plantillas, "habilitados": settings.CANALES_ENVIO,
-        "correo_real": not settings.EMAIL_BACKEND.endswith(("console.EmailBackend", "locmem.EmailBackend")),
-        "remitente": settings.DEFAULT_FROM_EMAIL})
+        "correo_real": not ss.modo_prueba_correo(), "conf_correo": conf,
+        "correo_form": correo_form or ConfiguracionCorreoForm(instance=conf, prefix="correo")})
 
 
 def probar_correo(request):
@@ -134,11 +189,13 @@ def probar_correo(request):
                   "Si lo recibiste, los recordatorios y valoraciones también van a llegar.",
                   None, [destino])
     except Exception as e:  # credenciales, servidor caído, etc.
-        messages.error(request, f"No se pudo enviar: {e}. Revisa EMAIL_HOST, EMAIL_HOST_USER y EMAIL_HOST_PASSWORD en el .env.")
+        messages.error(request, f"No se pudo enviar: {e}. Revisa el correo, la contraseña de aplicación y el servidor "
+                                f"en «Cuenta de correo».")
         return redirect("seguimiento:canales")
-    if settings.EMAIL_BACKEND.endswith("console.EmailBackend"):
+    if ss.modo_prueba_correo():
         messages.warning(request, "El correo se generó, pero el sistema está en modo prueba: aparece en la consola del "
-                                  "servidor y no llega a la bandeja. Configura el SMTP en el .env para enviarlo de verdad.")
+                                  "servidor y no llega a la bandeja. Configura la cuenta en «Cuenta de correo» y activa "
+                                  "«Enviar correos reales».")
     else:
         messages.success(request, f"Correo enviado a {destino}. Revisa la bandeja de entrada (y spam).")
     return redirect("seguimiento:canales")

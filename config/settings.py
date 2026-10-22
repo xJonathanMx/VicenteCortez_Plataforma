@@ -113,7 +113,9 @@ STORAGES = {
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Correo (recuperar contraseña, recordatorios y valoraciones).
-EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+# Por defecto la cuenta de correo se configura desde la plataforma (Valoraciones > Canales y mensajes).
+# Se puede forzar otro backend con la variable EMAIL_BACKEND en el .env.
+EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "core.correo.BackendConfigurable")
 EMAIL_HOST = os.getenv("EMAIL_HOST", "")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")

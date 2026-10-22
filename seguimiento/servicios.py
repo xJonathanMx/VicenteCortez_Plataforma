@@ -142,6 +142,14 @@ def armar_mensaje(tipo, canal, contexto):
         raise ErrorEnvio(f"La plantilla usa una variable desconocida: {e}", definitivo=True)
 
 
+def modo_prueba_correo():
+    """True si los correos solo se muestran en consola (no hay cuenta de correo activa)."""
+    from core.correo import envia_de_verdad
+    if settings.EMAIL_BACKEND == "core.correo.BackendConfigurable":
+        return not envia_de_verdad()
+    return settings.EMAIL_BACKEND.endswith(("console.EmailBackend", "locmem.EmailBackend"))
+
+
 def enviar(canal, cliente, asunto, cuerpo):
     """Devuelve (destino, simulado). Lanza ErrorEnvio si falla."""
     if canal.codigo == "email":
@@ -153,7 +161,7 @@ def enviar(canal, cliente, asunto, cuerpo):
             send_mail(asunto, cuerpo, None, [cliente.correo])
         except Exception as e:  # SMTP caído, credenciales, etc.
             raise ErrorEnvio(f"Fallo SMTP: {e}"[:250])
-        return cliente.correo, settings.EMAIL_BACKEND.endswith("console.EmailBackend")
+        return cliente.correo, modo_prueba_correo()
 
     numero = normalizar_telefono(cliente.telefono)
     if not settings.WHATSAPP_TOKEN:

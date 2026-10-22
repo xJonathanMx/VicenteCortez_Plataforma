@@ -7,7 +7,9 @@
   (function () {
     var proveedores = {
       gmail: { servidor: "smtp.gmail.com", puerto: 587, seguridad: "tls" },
-      outlook: { servidor: "smtp.office365.com", puerto: 587, seguridad: "tls" }
+      // Cuentas personales @outlook, @hotmail y @live. Microsoft puede rechazar el envío con contraseña:
+      // si falla, conviene enviar con Gmail y poner el @live en «Responder a».
+      outlook: { servidor: "smtp-mail.outlook.com", puerto: 587, seguridad: "tls" }
     };
     var sel = document.getElementById("id_correo-proveedor");
     if (!sel) return;
@@ -57,6 +59,7 @@
       {% campo f.usuario "col-12 col-md-8" %}
       {% campo f.clave "col-12 col-md-6" %}
       {% campo f.remitente_nombre "col-12 col-md-6" %}
+      {% campo f.responder_a "col-12 col-md-6" %}
     </div>
     <details class="mt-3" {% if f.servidor.errors or f.puerto.errors %}open{% endif %} data-avanzado>
       <summary class="small fw-semibold" style="cursor:pointer">Configuración avanzada (servidor y puerto)</summary>
@@ -82,6 +85,12 @@
       <li>Crea una con el nombre «Vicente Cortez» y copia la clave de 16 letras.</li>
       <li>Pégala en «Contraseña de aplicación», activa «Enviar correos reales» y guarda.</li>
     </ol>
+    <p class="small mt-2 mb-0">Las cuentas institucionales (ej. @duocuc.cl) no permiten contraseñas de aplicación: usa un Gmail personal o de la peluquería.</p>
+  </details>
+  <details class="mt-2">
+    <summary class="small fw-semibold" style="cursor:pointer">La peluquería usa un correo @live, @hotmail u @outlook</summary>
+    <p class="small mt-2 mb-0">Microsoft puede bloquear el envío desde programas externos con contraseña. Lo más seguro es <strong>enviar con un Gmail de la peluquería</strong>
+      y escribir el correo @live en <strong>«Responder a»</strong>: así, si un cliente contesta, la respuesta llega al @live de siempre.</p>
   </details>
 
   <hr class="my-4" style="border-color:var(--linea);opacity:1">

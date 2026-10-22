@@ -419,3 +419,20 @@ class ConfiguracionCorreoTests(Base):
             BackendConfigurable().send_messages([])
         smtp.assert_not_called()
         consola.assert_called_once()
+
+
+class ResponderATests(Base):
+    def test_respuestas_van_al_correo_live(self):
+        from unittest import mock
+        from django.core.mail import EmailMessage
+        from core.correo import BackendConfigurable
+        from seguimiento.models import ConfiguracionCorreo
+        conf = ConfiguracionCorreo.actual()
+        conf.usuario, conf.activo, conf.responder_a = "peluqueria@gmail.com", True, "vicentecortez@live.cl"
+        conf.fijar_clave("secreta")
+        conf.save()
+        with mock.patch("core.correo.SMTPBackend"):
+            m = EmailMessage("Hola", "Cuerpo", None, ["cliente@correo.cl"])
+            BackendConfigurable().send_messages([m])
+        self.assertEqual(m.reply_to, ["vicentecortez@live.cl"])
+        self.assertIn("peluqueria@gmail.com", m.from_email)

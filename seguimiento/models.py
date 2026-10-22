@@ -130,6 +130,9 @@ class ConfiguracionCorreo(models.Model):
     usuario = models.CharField("correo de la cuenta", max_length=120, blank=True)
     clave_cifrada = models.TextField("contraseña (cifrada)", blank=True)
     remitente_nombre = models.CharField("nombre del remitente", max_length=80, default="Peluquería Vicente Cortez")
+    responder_a = models.EmailField("responder a", max_length=120, blank=True,
+                                    help_text="Si el cliente contesta un correo, la respuesta llega a esta dirección "
+                                              "(ej. el @live de la peluquería). Vacío = a la misma cuenta.")
     actualizado_en = models.DateTimeField(auto_now=True)
     actualizado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True,
                                         related_name="+")

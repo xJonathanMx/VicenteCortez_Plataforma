@@ -63,4 +63,7 @@ class BackendConfigurable(BaseEmailBackend):
             # Gmail/Outlook exigen que el remitente sea la misma cuenta autenticada.
             if not m.from_email or m.from_email == settings.DEFAULT_FROM_EMAIL:
                 m.from_email = conf.remitente
+            # Las respuestas del cliente llegan al correo habitual de la peluquería (ej. @live).
+            if conf.responder_a and not m.reply_to:
+                m.reply_to = [conf.responder_a]
         return smtp.send_messages(mensajes)

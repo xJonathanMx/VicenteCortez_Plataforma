@@ -168,26 +168,28 @@ def usar_giftcard(request, ficha_pk):
     form = UsoGiftcardForm(request.POST, cliente=ficha.cliente)
     if form.is_valid():
         try:
-            bs.usar_giftcard(form.cleaned_data["giftcard"], ficha, form.cleaned_data["monto"], request.user)
-            messages.success(request, "Monto descontado de la giftcard.")
+            g = form.cleaned_data["giftcard"]
+            bs.usar_giftcard(g, ficha, form.cleaned_data["monto"], request.user)
+            messages.success(request, f"Se descontaron ${form.cleaned_data['monto']:,} de la giftcard {g.codigo}.".replace(",", "."))
         except ValidationError as e:
             messages.error(request, " ".join(e.messages))
     else:
-        messages.error(request, "Elige la giftcard e indica el monto.")
-    return redirect("fichas:detalle", pk=ficha_pk)
+        messages.error(request, " ".join(e for errs in form.errors.values() for e in errs))
+    return redirect(f"{reverse('fichas:detalle', args=[ficha_pk])}#beneficios")
 
 
 @privilegio_requerido(PRIV)
 @require_POST
 def usar_promocion(request, ficha_pk):
     ficha = get_object_or_404(FichaAtencion, pk=ficha_pk)
-    form = UsoPromocionForm(request.POST, cliente=ficha.cliente)
+    form = UsoPromocionForm(request.POST, cliente=ficha.cliente, ficha=ficha)
     if form.is_valid():
+        cp, servicio, detalle = form.cleaned_data["uso"]
         try:
-            bs.usar_promocion(form.cleaned_data["promocion"], form.cleaned_data["servicio"], ficha, request.user)
-            messages.success(request, "Uso de promoción registrado.")
+            bs.usar_promocion(cp, servicio, ficha, request.user, detalle=detalle)
+            messages.success(request, f"Se usó {servicio.nombre} de la promoción {cp.promocion} ({cp.codigo}).")
         except ValidationError as e:
             messages.error(request, " ".join(e.messages))
     else:
-        messages.error(request, "Elige la promoción y el servicio.")
-    return redirect("fichas:detalle", pk=ficha_pk)
+        messages.error(request, " ".join(e for errs in form.errors.values() for e in errs))
+    return redirect(f"{reverse('fichas:detalle', args=[ficha_pk])}#beneficios")

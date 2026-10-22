@@ -98,25 +98,47 @@ class VentaPromocionForm(ModelFormEstilo):
 
 
 class UsoGiftcardForm(FormEstilo):
-    giftcard = forms.ModelChoiceField(Giftcard.objects.none(), label="Giftcard vigente", empty_label="Elige una")
-    monto = forms.IntegerField(label="Monto a descontar", min_value=1)
+    """Las giftcards se muestran como tarjetas seleccionables (ver fichas/detalle.html)."""
+    giftcard = forms.ModelChoiceField(Giftcard.objects.none(), label="Giftcard",
+                                      error_messages={"required": "Elige la giftcard que se va a usar."})
+    monto = forms.IntegerField(label="Monto a descontar", min_value=1,
+                               error_messages={"required": "Indica el monto a descontar."})
 
     def __init__(self, *args, cliente=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["giftcard"].queryset = Giftcard.objects.filter(beneficiario=cliente, estado="vigente")
-        self.fields["giftcard"].label_from_instance = lambda g: f"{g.codigo}, saldo ${g.saldo_actual:,}".replace(",", ".")
 
 
 class UsoPromocionForm(FormEstilo):
-    promocion = forms.ModelChoiceField(ClientePromocion.objects.none(), label="Promoción vigente", empty_label="Elige una")
-    servicio = forms.ModelChoiceField(Servicio.objects.all(), label="Servicio que usa")
+    """
+    Una sola elección: «qué servicio de qué promoción» se usa. Solo se ofrecen los servicios
+    que están en esta ficha, que la promoción incluye y que aún tienen usos disponibles.
+    """
+    uso = forms.ChoiceField(label="Servicio de la promoción",
+                            error_messages={"required": "Elige qué servicio de la promoción se usa."})
 
-    def __init__(self, *args, cliente=None, **kwargs):
+    def __init__(self, *args, cliente=None, ficha=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["promocion"].queryset = ClientePromocion.objects.filter(
+        self.opciones = []
+        en_ficha = {}
+        if ficha is not None:
+            ya_cubiertos = set(ficha.usos_promocion.exclude(detalle=None).values_list("detalle_id", flat=True))
+            for d in ficha.servicios.select_related("servicio"):
+                if d.pk not in ya_cubiertos:
+                    en_ficha.setdefault(d.servicio_id, d)
+        vigentes = ClientePromocion.objects.filter(
             Q(comprador=cliente) | Q(beneficiario=cliente), estado="vigente").select_related("promocion")
-        ids = self.fields["promocion"].queryset.values_list("promocion__servicios__servicio", flat=True)
-        self.fields["servicio"].queryset = Servicio.objects.filter(pk__in=ids)
+        for cp in vigentes:
+            for fila in cp.detalle_usos():
+                detalle = en_ficha.get(fila["servicio"].pk)
+                self.opciones.append({
+                    "valor": f"{cp.pk}-{fila['servicio'].pk}", "cp": cp, "fila": fila, "detalle": detalle,
+                    "disponible": fila["disponibles"] > 0 and detalle is not None})
+        self.fields["uso"].choices = [(o["valor"], o["valor"]) for o in self.opciones if o["disponible"]]
+
+    def clean_uso(self):
+        o = next(o for o in self.opciones if o["valor"] == self.cleaned_data["uso"])
+        return o["cp"], o["fila"]["servicio"], o["detalle"]
 
 
 class FiltroBeneficiosForm(FormEstilo):

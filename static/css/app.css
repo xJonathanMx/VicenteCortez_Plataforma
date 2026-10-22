@@ -381,3 +381,23 @@ a { color: var(--tinta); }
   .fila-incentivo [data-desc-incentivo], .fila-incentivo [data-monto-incentivo] { grid-column: 1 / -1; }
   .fila-incentivo { padding-bottom: 10px; border-bottom: 1px solid var(--linea); }
 }
+
+/* ---------- tarjetas seleccionables (giftcards / promociones en la ficha) ---------- */
+.elegibles { display: grid; gap: 10px; }
+.elegible { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: var(--radio-m);
+  box-shadow: var(--relieve-s); cursor: pointer; transition: box-shadow .15s; }
+.elegible input[type=radio] { appearance: none; -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%;
+  box-shadow: var(--hundido-s); background: var(--bg); flex: none; margin: 1px 0 0; position: relative; cursor: pointer; }
+.elegible input[type=radio]:checked { background: var(--tinta); box-shadow: 2px 2px 5px var(--sombra-acento); }
+.elegible input[type=radio]:checked::after { content: ""; position: absolute; inset: 7px; border-radius: 50%; background: var(--sobre-tinta); }
+.elegible input[type=radio]:focus-visible { outline: 2px solid var(--tinta); outline-offset: 2px; }
+.elegible:has(input:checked) { box-shadow: var(--relieve-s), inset 0 0 0 2px var(--tinta); }
+.elegible-cuerpo { display: grid; gap: 2px; }
+.elegible-titulo { font-weight: 700; color: var(--tinta); }
+.elegible-dato { font-size: .85rem; color: var(--tinta-2); }
+.elegible-nota { font-size: .8rem; color: var(--alerta); }
+.elegible.no-disponible { opacity: .6; cursor: not-allowed; box-shadow: var(--hundido-s); }
+
+.resumen-pago { border-radius: var(--radio-m); box-shadow: var(--hundido); padding: 14px 18px; max-width: 420px; }
+.resumen-pago > div { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; font-size: .92rem; }
+.resumen-pago .total { border-top: 1px solid var(--linea); margin-top: 6px; padding-top: 8px; font-weight: 700; color: var(--tinta); }

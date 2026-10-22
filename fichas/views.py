@@ -108,10 +108,19 @@ def detalle(request, pk):
         ctx["agregar_form"] = AgregarServicioForm(ficha=ficha, usuario=u)
     if u.tiene_privilegio("gestionar_beneficios") and ficha.cliente_id and ficha.estado_id != "anulada":
         from beneficios.forms import UsoGiftcardForm, UsoPromocionForm
-        ctx["uso_gc_form"] = UsoGiftcardForm(cliente=ficha.cliente)
-        ctx["uso_pr_form"] = UsoPromocionForm(cliente=ficha.cliente)
-        ctx["usos_gc"] = ficha.usos_giftcard.select_related("giftcard")
-        ctx["usos_pr"] = ficha.usos_promocion.select_related("cliente_promocion__promocion", "servicio")
+        usos_gc = list(ficha.usos_giftcard.select_related("giftcard", "registrado_por"))
+        usos_pr = list(ficha.usos_promocion.select_related("cliente_promocion__promocion", "servicio", "detalle",
+                                                            "registrado_por"))
+        pagado_gc = sum(u.monto_usado for u in usos_gc)
+        cubierto_pr = sum(u.detalle.precio_cobrado for u in usos_pr if u.detalle_id)
+        por_pagar = max(ficha.total - pagado_gc - cubierto_pr, 0)
+        gc_form = UsoGiftcardForm(cliente=ficha.cliente)
+        ctx.update({
+            "uso_gc_form": gc_form, "giftcards": list(gc_form.fields["giftcard"].queryset),
+            "uso_pr_form": UsoPromocionForm(cliente=ficha.cliente, ficha=ficha),
+            "usos_gc": usos_gc, "usos_pr": usos_pr, "pagado_gc": pagado_gc, "cubierto_pr": cubierto_pr,
+            "por_pagar": por_pagar,
+        })
     return render(request, "fichas/detalle.html", ctx)
 
 

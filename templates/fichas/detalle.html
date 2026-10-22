@@ -193,24 +193,84 @@
 </section>
 
 {% if uso_gc_form %}
-<section class="tarjeta mb-4">
-  <h2 class="mb-3">Giftcards y promociones en esta atención</h2>
-  <div class="rejilla rejilla-2">
-    <form method="post" action="{% url 'beneficios:usar_giftcard' f.pk %}" novalidate>{% csrf_token %}
-      <div class="row g-2">{% campo uso_gc_form.giftcard %}{% campo uso_gc_form.monto %}</div>
-      <button class="btn btn-relieve mt-2" {% if not uso_gc_form.fields.giftcard.queryset %}disabled{% endif %}>Descontar de giftcard</button>
-    </form>
-    <form method="post" action="{% url 'beneficios:usar_promocion' f.pk %}" novalidate>{% csrf_token %}
-      <div class="row g-2">{% campo uso_pr_form.promocion %}{% campo uso_pr_form.servicio %}</div>
-      <button class="btn btn-relieve mt-2" {% if not uso_pr_form.fields.promocion.queryset %}disabled{% endif %}>Usar promoción</button>
-    </form>
+<section class="tarjeta mb-4" id="beneficios">
+  <h2 class="mb-1">Giftcards y promociones</h2>
+  <p class="small text-apagado">Registro informativo de cómo se pagó parte de esta atención. No se procesan pagos.</p>
+
+  <div class="resumen-pago mb-4">
+    <div><span>Total de la atención</span><strong class="tabular">{{ f.total|pesos }}</strong></div>
+    {% if pagado_gc %}<div><span>Pagado con giftcard</span><strong class="tabular">− {{ pagado_gc|pesos }}</strong></div>{% endif %}
+    {% if cubierto_pr %}<div><span>Cubierto por promoción</span><strong class="tabular">− {{ cubierto_pr|pesos }}</strong></div>{% endif %}
+    <div class="total"><span>Queda por pagar</span><strong class="tabular">{{ por_pagar|pesos }}</strong></div>
   </div>
+
   {% if usos_gc or usos_pr %}
-    <ul class="lista mt-3">
-      {% for u in usos_gc %}<li class="small"><i data-lucide="gift"></i><span class="flex-grow-1">Giftcard {{ u.giftcard.codigo }}</span><span class="tabular">{{ u.monto_usado|pesos }}</span></li>{% endfor %}
-      {% for u in usos_pr %}<li class="small"><i data-lucide="ticket"></i><span class="flex-grow-1">{{ u.cliente_promocion.promocion }}: {{ u.servicio.nombre }}</span></li>{% endfor %}
+    <h3 class="mb-2">Aplicado en esta atención</h3>
+    <ul class="lista mb-4">
+      {% for u in usos_gc %}
+        <li><i data-lucide="gift"></i>
+          <div class="flex-grow-1"><div class="fw-semibold text-dark">Giftcard {{ u.giftcard.codigo }}: {{ u.monto_usado|pesos }}</div>
+            <div class="small text-apagado">{{ u.fecha_uso|date:"d-m-Y H:i" }} por {{ u.registrado_por.nombre_corto }}. Saldo que le queda: {{ u.giftcard.saldo_actual|pesos }}</div></div>
+          <span class="estado ok">Aplicada</span></li>
+      {% endfor %}
+      {% for u in usos_pr %}
+        <li><i data-lucide="ticket"></i>
+          <div class="flex-grow-1"><div class="fw-semibold text-dark">{{ u.servicio.nombre }} con la promoción {{ u.cliente_promocion.promocion }}</div>
+            <div class="small text-apagado">Código {{ u.cliente_promocion.codigo }}. {{ u.fecha_uso|date:"d-m-Y H:i" }} por {{ u.registrado_por.nombre_corto }}</div></div>
+          <span class="estado ok">Aplicada</span></li>
+      {% endfor %}
     </ul>
   {% endif %}
+
+  <div class="rejilla rejilla-2">
+    <form method="post" action="{% url 'beneficios:usar_giftcard' f.pk %}" novalidate>{% csrf_token %}
+      <h3 class="mb-1">Usar una giftcard</h3>
+      {% if giftcards %}
+        <p class="small text-apagado">1. Toca la giftcard. 2. Indica cuánto descontar.</p>
+        <div class="elegibles mb-3" role="radiogroup" aria-label="Giftcards del cliente">
+          {% for g in giftcards %}
+            <label class="elegible">
+              <input type="radio" name="giftcard" value="{{ g.pk }}" {% if giftcards|length == 1 %}checked{% endif %} data-saldo="{{ g.saldo_actual }}">
+              <span class="elegible-cuerpo">
+                <span class="elegible-titulo">{{ g.codigo }}</span>
+                <span class="elegible-dato">Saldo <strong>{{ g.saldo_actual|pesos }}</strong></span>
+                <span class="elegible-dato">Vence el {{ g.fecha_vencimiento|date:"d-m-Y" }}</span>
+              </span>
+            </label>
+          {% endfor %}
+        </div>
+        <label class="form-label" for="monto_gc">Monto a descontar</label>
+        <input class="form-control mb-1" id="monto_gc" name="monto" inputmode="numeric" value="{% if por_pagar %}{{ por_pagar }}{% endif %}" style="max-width:200px">
+        <p class="form-text">Se sugiere lo que queda por pagar. No puede superar el saldo de la giftcard.</p>
+        <button class="btn btn-negro mt-2"><i data-lucide="gift"></i>Descontar de la giftcard</button>
+      {% else %}
+        <p class="text-apagado small mb-0">Este cliente no tiene giftcards vigentes.</p>
+      {% endif %}
+    </form>
+
+    <form method="post" action="{% url 'beneficios:usar_promocion' f.pk %}" novalidate>{% csrf_token %}
+      <h3 class="mb-1">Usar una promoción</h3>
+      {% if uso_pr_form.opciones %}
+        <p class="small text-apagado">Toca el servicio de la promoción que se usa en esta atención.</p>
+        <div class="elegibles mb-3" role="radiogroup" aria-label="Servicios de promociones del cliente">
+          {% for o in uso_pr_form.opciones %}
+            <label class="elegible{% if not o.disponible %} no-disponible{% endif %}">
+              <input type="radio" name="uso" value="{{ o.valor }}" {% if not o.disponible %}disabled{% endif %}>
+              <span class="elegible-cuerpo">
+                <span class="elegible-titulo">{{ o.fila.servicio.nombre }}</span>
+                <span class="elegible-dato">{{ o.cp.promocion }} ({{ o.cp.codigo }})</span>
+                <span class="elegible-dato">Quedan <strong>{{ o.fila.disponibles }} de {{ o.fila.total }}</strong>, vence el {{ o.cp.fecha_vencimiento|date:"d-m-Y" }}</span>
+                {% if not o.disponible %}<span class="elegible-nota">{% if o.fila.disponibles == 0 %}Ya se usaron todas las veces.{% else %}Agrega {{ o.fila.servicio.nombre }} a la ficha para usarlo.{% endif %}</span>{% endif %}
+              </span>
+            </label>
+          {% endfor %}
+        </div>
+        <button class="btn btn-negro" {% if not uso_pr_form.fields.uso.choices %}disabled{% endif %}><i data-lucide="ticket"></i>Usar en esta atención</button>
+      {% else %}
+        <p class="text-apagado small mb-0">Este cliente no tiene promociones vigentes.</p>
+      {% endif %}
+    </form>
+  </div>
 </section>
 {% endif %}
 

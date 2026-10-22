@@ -325,3 +325,29 @@ class SimultaneosTests(Base):
         self.client.post(reverse("fichas:iniciar", args=[d.pk]))
         d.refresh_from_db()
         self.assertEqual(d.estado, "en_proceso")
+
+
+class PromocionEnFichaTests(Base):
+    def test_promocion_solo_para_servicios_de_la_ficha(self):
+        from beneficios.models import ClientePromocion, Promocion, PromocionServicio
+        tintura = Servicio.objects.get(nombre="Tintura completa")
+        corte = Servicio.objects.get(nombre="Corte dama")
+        promo = Promocion.objects.create(nombre="Pack color", precio=90000)
+        PromocionServicio.objects.create(promocion=promo, servicio=tintura, cantidad_total=2)
+        PromocionServicio.objects.create(promocion=promo, servicio=corte, cantidad_total=1)
+        cp = ClientePromocion.objects.create(promocion=promo, comprador=self.cliente, creada_por=self.admin,
+                                             fecha_vencimiento=timezone.localdate() + timedelta(days=30))
+        ficha = fs.abrir_ficha(self.admin, self.cliente)
+        d = fs.agregar_servicio(ficha, tintura, self.pelu, "basico", self.admin)
+        self.entrar(self.admin)
+        r = self.client.get(reverse("fichas:detalle", args=[ficha.pk]))
+        self.assertContains(r, "Agrega Corte dama a la ficha para usarlo.")  # corte no está en la ficha
+        self.assertContains(r, "Quedan <strong>2 de 2</strong>", html=False)
+        self.client.post(reverse("beneficios:usar_promocion", args=[ficha.pk]), {"uso": f"{cp.pk}-{corte.pk}"})
+        self.assertEqual(cp.usos.count(), 0)  # rechazado: no está en la ficha
+        self.client.post(reverse("beneficios:usar_promocion", args=[ficha.pk]), {"uso": f"{cp.pk}-{tintura.pk}"})
+        uso = cp.usos.get()
+        self.assertEqual(uso.detalle, d)  # queda ligado al servicio de la ficha
+        r = self.client.get(reverse("fichas:detalle", args=[ficha.pk]))
+        self.assertContains(r, "Cubierto por promoción")
+        self.assertContains(r, "Aplicada")

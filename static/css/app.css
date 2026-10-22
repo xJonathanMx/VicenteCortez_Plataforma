@@ -247,15 +247,19 @@ a { color: var(--tinta); }
 .servicio-ficha.en-proceso { box-shadow: var(--relieve-s), inset 0 0 0 2px var(--tinta); }
 .cronometro { font-size: 1.5rem; font-weight: 800; color: var(--tinta); font-variant-numeric: tabular-nums; }
 
-/* ---------- valoración pública ---------- */
-.estrellas { display: flex; gap: 10px; justify-content: center; flex-direction: row-reverse; }
+/* ---------- valoración pública: estrellas ---------- */
+.estrellas { display: flex; gap: 6px; justify-content: center; flex-direction: row-reverse; }
 .estrellas input { position: absolute; opacity: 0; pointer-events: none; }
 .estrellas label {
-  width: 54px; height: 54px; border-radius: 16px; box-shadow: var(--relieve-s); display: grid; place-items: center;
-  cursor: pointer; font-weight: 800; font-size: 1.2rem; color: var(--apagado);
+  font-size: 46px; line-height: 1; cursor: pointer; color: var(--bg); padding: 4px;
+  text-shadow: 2px 2px 3px var(--sombra), -2px -2px 3px var(--luz);  /* estrella "hundida" sin marcar */
+  transition: transform .12s;
 }
-.estrellas input:checked ~ label, .estrellas label:hover, .estrellas label:hover ~ label { background: var(--tinta); color: var(--sobre-tinta); box-shadow: 3px 5px 12px var(--sombra-acento); }
-.estrellas input:focus-visible + label { outline: 2px solid var(--tinta); outline-offset: 3px; }
+.estrellas input:checked ~ label, .estrellas label:hover, .estrellas label:hover ~ label {
+  color: var(--tinta); text-shadow: 2px 3px 6px var(--sombra-acento);
+}
+.estrellas label:active { transform: scale(.92); }
+.estrellas input:focus-visible + label { outline: 2px solid var(--tinta); outline-offset: 2px; border-radius: 8px; }
 
 /* ---------- avisos ---------- */
 .aviso { border-radius: var(--radio-m); padding: 13px 16px; margin-bottom: 18px; display: flex; gap: 10px; align-items: flex-start; font-size: .92rem; box-shadow: var(--relieve-s); }

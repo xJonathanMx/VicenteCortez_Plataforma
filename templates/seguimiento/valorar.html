@@ -1,5 +1,21 @@
 {% extends "registration/base_publica.html" %}
 {% block titulo %}Valora tu atención{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    var textos = { 1: "1 de 5: Muy mala", 2: "2 de 5: Mala", 3: "3 de 5: Regular", 4: "4 de 5: Buena", 5: "5 de 5: Excelente" };
+    var salida = document.querySelector("[data-texto-nota]");
+    if (!salida) return;
+    function pintar() {
+      var marcada = document.querySelector('input[name="calificacion"]:checked');
+      salida.textContent = marcada ? textos[marcada.value] : "Toca una estrella";
+    }
+    document.querySelectorAll('input[name="calificacion"]').forEach(function (r) { r.addEventListener("change", pintar); });
+    pintar();
+  })();
+</script>
+{% endblock %}
 {% block publico %}
 {% if listo %}
   <h1 class="h3 text-center">¡Gracias, {{ v.ficha.cliente.nombre }}!</h1>
@@ -12,15 +28,15 @@
   <p class="text-center text-apagado">¿Cómo quedaste con tu atención del {{ v.ficha.fecha_hora_inicio|date:"d-m-Y" }} ({{ servicios }})? Califica a {{ v.peluquero.nombre }}.</p>
   <form method="post" novalidate>{% csrf_token %}
     <fieldset class="my-4">
-      <legend class="visually-hidden">Calificación de 1 a 5</legend>
+      <legend class="visually-hidden">Calificación de 1 a 5 estrellas</legend>
       <div class="estrellas">
         {% for i in "54321" %}
           <input type="radio" name="calificacion" id="c{{ i }}" value="{{ i }}" {% if form.calificacion.value|stringformat:"s" == i %}checked{% endif %} required>
-          <label for="c{{ i }}" title="{{ i }} de 5">{{ i }}</label>
+          <label for="c{{ i }}" title="{{ i }} de 5" aria-label="{{ i }} de 5 estrellas">&#9733;</label>
         {% endfor %}
       </div>
-      <div class="d-flex justify-content-between small text-apagado mt-2 px-1"><span>Muy mala</span><span>Excelente</span></div>
-      {% if form.calificacion.errors %}<p class="errorlist text-center">Elige una calificación del 1 al 5.</p>{% endif %}
+      <p class="text-center fw-semibold mt-2 mb-0" data-texto-nota aria-live="polite">Toca una estrella</p>
+      {% if form.calificacion.errors %}<p class="errorlist text-center">Elige una calificación de 1 a 5 estrellas.</p>{% endif %}
     </fieldset>
     <label class="form-label" for="id_comentario">Comentario <span class="text-apagado fw-normal">(opcional)</span></label>
     {{ form.comentario }}

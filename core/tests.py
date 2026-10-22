@@ -436,3 +436,35 @@ class ResponderATests(Base):
             BackendConfigurable().send_messages([m])
         self.assertEqual(m.reply_to, ["vicentecortez@live.cl"])
         self.assertIn("peluqueria@gmail.com", m.from_email)
+
+
+class CorreoEstrellasTests(Base):
+    def test_valoracion_va_con_estrellas_y_texto(self):
+        from django.core import mail
+        ficha = fs.abrir_ficha(self.admin, self.cliente)
+        d = fs.agregar_servicio(ficha, Servicio.objects.get(nombre="Corte dama"), self.pelu, "basico", self.admin)
+        fs.iniciar_servicio(d, self.admin)
+        fs.terminar_servicio(d, self.admin)
+        fs.cerrar_ficha(ficha, self.admin)
+        v = ficha.valoraciones.get()
+        procesar_pendientes(hoy=timezone.localdate() + timedelta(days=1))
+        correo = next(m for m in mail.outbox if v.token in m.body)
+        html = correo.alternatives[0][0]
+        for n in range(1, 6):
+            self.assertIn(f"/valorar/{v.token}/?nota={n}", html)   # 5 estrellas
+        self.assertIn(v.enlace, correo.body)                         # versión de texto con el enlace
+
+    def test_estrella_llega_marcada_y_no_guarda_sola(self):
+        v = Valoracion.objects.filter(estado="pendiente", ficha__cliente__isnull=False).exclude(ficha__estado="anulada").first()
+        r = self.client.get(reverse("valorar", args=[v.token]) + "?nota=4")
+        self.assertContains(r, 'value="4" checked')
+        v.refresh_from_db()
+        self.assertEqual(v.estado, "pendiente")  # abrir el enlace no registra la nota
+
+    def test_pagina_y_correo_de_ejemplo(self):
+        from django.core import mail
+        self.assertContains(self.client.get("/valorar/ejemplo/?nota=5"), 'value="5" checked')
+        self.assertContains(self.client.post("/valorar/ejemplo/", {"calificacion": "5"}), "Gracias")
+        self.entrar(self.admin)
+        self.client.post(reverse("seguimiento:canales"), {"probar_correo": "yo@vicentecortez.cl", "ejemplo": "valoracion"})
+        self.assertIn("/valorar/ejemplo/?nota=3", mail.outbox[-1].alternatives[0][0])

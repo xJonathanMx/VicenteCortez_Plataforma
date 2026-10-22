@@ -189,6 +189,8 @@ def probar_correo(request):
     except ValidationError:
         messages.error(request, f"«{destino or 'vacío'}» no es un correo válido.")
         return redirect("seguimiento:canales")
+    if request.POST.get("ejemplo") == "valoracion":
+        return enviar_ejemplo_valoracion(request, destino)
     try:
         send_mail("Prueba de correo: Peluquería Vicente Cortez",
                   f"Hola, este es un correo de prueba enviado desde la plataforma por {request.user.nombre_corto}.\n"
@@ -207,14 +209,56 @@ def probar_correo(request):
     return redirect("seguimiento:canales")
 
 
+def _valoracion_ejemplo(nombre="Camila"):
+    """Objeto de muestra con la misma forma que una Valoración real (no se guarda)."""
+    from types import SimpleNamespace
+    ahora = timezone.now()
+    ficha = SimpleNamespace(cliente=SimpleNamespace(nombre=nombre), fecha_hora_inicio=ahora, estado_id="cerrada")
+    return SimpleNamespace(ficha=ficha, peluquero=SimpleNamespace(nombre="Andrea"), estado="enviada",
+                           enlace=f"{settings.SITIO_URL.rstrip('/')}/valorar/ejemplo/")
+
+
+def enviar_ejemplo_valoracion(request, destino):
+    """Envía al administrador el correo de valoración tal como lo recibe un cliente, con datos de ejemplo."""
+    from django.core.mail import EmailMultiAlternatives
+    v = _valoracion_ejemplo(request.user.nombre)
+    ctx = {"nombre": request.user.nombre, "servicio": "corte dama", "peluquero": "Andrea", "enlace": v.enlace,
+           "fecha": "", "codigo": "", "saldo": ""}
+    canal = CanalComunicacion.objects.filter(codigo="email").first()
+    asunto, cuerpo = ss.armar_mensaje("valoracion", canal, ctx)
+    try:
+        correo = EmailMultiAlternatives(f"[Ejemplo] {asunto}", cuerpo, None, [destino])
+        correo.attach_alternative(ss.html_valoracion(v, ctx), "text/html")
+        correo.send()
+    except Exception as e:
+        messages.error(request, f"No se pudo enviar: {e}.")
+        return redirect("seguimiento:canales")
+    if ss.modo_prueba_correo():
+        messages.warning(request, "El ejemplo se generó, pero el sistema está en modo prueba: no llega a la bandeja.")
+    else:
+        messages.success(request, f"Ejemplo de valoración enviado a {destino}. Las estrellas abren una página de muestra que no guarda nada.")
+    return redirect("seguimiento:canales")
+
+
 def valorar_publico(request, token):
     """RF-VS-08 / RF-VS-09: el cliente responde sin iniciar sesión, con el enlace único."""
+    if token == "ejemplo":  # página de muestra para el correo de ejemplo: no guarda nada
+        v = _valoracion_ejemplo()
+        if request.method == "POST":
+            return render(request, "seguimiento/valorar.html", {"v": v, "listo": True})
+        nota = request.GET.get("nota")
+        form = RespuestaForm(initial={"calificacion": int(nota)} if nota in {"1", "2", "3", "4", "5"} else {})
+        return render(request, "seguimiento/valorar.html", {"v": v, "form": form, "servicios": "corte dama"})
     v = get_object_or_404(Valoracion.objects.select_related("ficha__cliente", "peluquero"), token=token)
     if v.estado == "respondida":
         return render(request, "seguimiento/valorar.html", {"v": v, "listo": True})
     if v.estado == "sin_respuesta" or v.ficha.estado_id == "anulada":
         return render(request, "seguimiento/valorar.html", {"v": v, "cerrada": True})
-    form = RespuestaForm(request.POST or None)
+    # La estrella tocada en el correo llega como ?nota=N y queda marcada; el cliente igual confirma
+    # (algunos antivirus abren los enlaces solos y no deben registrar una nota).
+    nota = request.GET.get("nota")
+    inicial = {"calificacion": int(nota)} if nota in {"1", "2", "3", "4", "5"} else {}
+    form = RespuestaForm(request.POST or None, initial=inicial)
     if request.method == "POST" and form.is_valid():
         v.calificacion = form.cleaned_data["calificacion"]
         v.respuesta = form.cleaned_data["comentario"]

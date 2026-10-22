@@ -13,7 +13,8 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.core.mail import send_mail
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import render_to_string
 from django.core.validators import validate_email
 from django.db import transaction
 from django.utils import timezone
@@ -150,15 +151,18 @@ def modo_prueba_correo():
     return settings.EMAIL_BACKEND.endswith(("console.EmailBackend", "locmem.EmailBackend"))
 
 
-def enviar(canal, cliente, asunto, cuerpo):
-    """Devuelve (destino, simulado). Lanza ErrorEnvio si falla."""
+def enviar(canal, cliente, asunto, cuerpo, html=None):
+    """Devuelve (destino, simulado). Lanza ErrorEnvio si falla. `html` es la versión con diseño del correo."""
     if canal.codigo == "email":
         try:
             validate_email(cliente.correo)
         except ValidationError:
             raise ErrorEnvio(f"Correo inválido: «{cliente.correo or 'vacío'}»", definitivo=True)
         try:
-            send_mail(asunto, cuerpo, None, [cliente.correo])
+            correo = EmailMultiAlternatives(asunto, cuerpo, None, [cliente.correo])
+            if html:
+                correo.attach_alternative(html, "text/html")
+            correo.send()
         except Exception as e:  # SMTP caído, credenciales, etc.
             raise ErrorEnvio(f"Fallo SMTP: {e}"[:250])
         return cliente.correo, modo_prueba_correo()
@@ -182,12 +186,12 @@ def enviar(canal, cliente, asunto, cuerpo):
     return numero, False
 
 
-def _intentar(objeto, tipo, cliente, contexto, estado_ok, estado_error, **fk):
+def _intentar(objeto, tipo, cliente, contexto, estado_ok, estado_error, html=None, **fk):
     canal = None
     try:
         canal = elegir_canal(cliente)
         asunto, cuerpo = armar_mensaje(tipo, canal, contexto)
-        destino, simulado = enviar(canal, cliente, asunto, cuerpo)
+        destino, simulado = enviar(canal, cliente, asunto, cuerpo, html=html if canal.codigo == "email" else None)
     except ErrorEnvio as e:
         objeto.intentos += 1
         objeto.ultimo_error = str(e)[:255]
@@ -219,7 +223,15 @@ def enviar_valoracion(v):
     servicio = ", ".join(s.servicio.nombre.lower() for s in f.servicios.all()[:2])
     ctx = {"nombre": f.cliente.nombre, "servicio": servicio, "peluquero": v.peluquero.nombre,
            "enlace": v.enlace, "fecha": "", "codigo": "", "saldo": ""}
-    return _intentar(v, "valoracion", f.cliente, ctx, "enviada", "error", valoracion=v)
+    return _intentar(v, "valoracion", f.cliente, ctx, "enviada", "error", html=html_valoracion(v, ctx), valoracion=v)
+
+
+def html_valoracion(v, ctx):
+    """Correo con 5 estrellas: cada una abre la página de valoración con esa nota ya marcada."""
+    sitio = settings.SITIO_URL.rstrip("/")
+    estrellas = [{"nota": n, "url": f"{v.enlace}?nota={n}"} for n in range(1, 6)]
+    return render_to_string("correos/valoracion.html", {
+        **ctx, "estrellas": estrellas, "logo": f"{sitio}/static/img/logo.png", "fecha": v.ficha.fecha_hora_inicio})
 
 
 def enviar_recordatorio(r):

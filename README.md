@@ -75,6 +75,9 @@ python manage.py procesar_envios
 Prográmalo cada 15 minutos (Programador de tareas de Windows o cron). También hay un botón «Enviar pendientes ahora» en *Valoraciones*.
 **Por ahora todos los mensajes se envían por correo electrónico.** El cliente necesita un correo registrado para recibir valoraciones y recordatorios; si no lo tiene, el envío queda marcado con error para que administración lo complete.
 **La cuenta de correo se configura desde la plataforma**: *Valoraciones → Canales y mensajes → Cuenta de correo* (proveedor, correo, contraseña de aplicación y nombre del remitente). Se puede cambiar en cualquier momento sin reiniciar. Mientras «Enviar correos reales» esté apagado, los correos solo se muestran en la consola del servidor. El botón «Enviar correo de prueba» confirma que funciona.
+- **Gmail**: verificación en 2 pasos + contraseña de aplicación en myaccount.google.com/apppasswords (las cuentas institucionales como @duocuc.cl no lo permiten).
+- **Outlook / Hotmail / Live**: verificación en dos pasos + contraseña de aplicación en account.microsoft.com/security; servidor `smtp-mail.outlook.com`, puerto 587. Microsoft puede bloquear el envío desde programas externos; si pasa, enviar con Gmail y poner el @live en «Responder a».
+
 La contraseña se guarda **cifrada** en la base de datos con una llave derivada de `SECRET_KEY`; si se cambia `SECRET_KEY`, hay que volver a escribir la contraseña en esa pantalla.
 WhatsApp está programado pero apagado. Para activarlo más adelante: `CANALES_ENVIO=email,whatsapp` y las credenciales `WHATSAPP_TOKEN` / `WHATSAPP_PHONE_ID`.
 

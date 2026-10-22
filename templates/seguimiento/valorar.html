@@ -9,7 +9,7 @@
   <p class="text-center text-apagado mb-0">Si quieres contarnos algo sobre tu atención, escríbenos o coméntalo en tu próxima visita.</p>
 {% else %}
   <h1 class="h3 text-center">Hola, {{ v.ficha.cliente.nombre }}</h1>
-  <p class="text-center text-apagado">¿Cómo está tu {{ servicios }}? Califica tu atención con {{ v.peluquero.nombre }} el {{ v.ficha.fecha_hora_inicio|date:"d-m-Y" }}.</p>
+  <p class="text-center text-apagado">¿Cómo quedaste con tu atención del {{ v.ficha.fecha_hora_inicio|date:"d-m-Y" }} ({{ servicios }})? Califica a {{ v.peluquero.nombre }}.</p>
   <form method="post" novalidate>{% csrf_token %}
     <fieldset class="my-4">
       <legend class="visually-hidden">Calificación de 1 a 5</legend>

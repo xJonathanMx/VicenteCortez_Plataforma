@@ -15,7 +15,7 @@
     </div>
     {% if field.help_text %}<div class="form-text">{{ field.help_text|safe }}</div>{% endif %}
   {% else %}
-    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}{% if not field.field.required %} <span class="text-apagado fw-normal">(opcional)</span>{% endif %}</label>
+    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.nota_etiqueta %} <span class="text-apagado fw-normal">({{ field.field.nota_etiqueta }})</span>{% elif not field.field.required and field.field.nota_etiqueta is not False %} <span class="text-apagado fw-normal">(opcional)</span>{% endif %}</label>
     {{ field }}
     {% if field.help_text %}<div class="form-text">{{ field.help_text|safe }}</div>{% endif %}
   {% endif %}

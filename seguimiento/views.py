@@ -52,11 +52,15 @@ class ConfiguracionCorreoForm(ModelFormEstilo):
                                             "outlook" if "office365" in servidor or "outlook" in servidor else "otro")
         self.fields["usuario"].widget = forms.EmailInput(attrs={"class": "form-control", "inputmode": "email",
                                                                 "placeholder": "peluqueria@gmail.com"})
-        self.fields["clave"].help_text = (
-            "Ya hay una contraseña guardada. Déjalo vacío para mantenerla." if self.instance.tiene_clave
-            else "En Gmail no es tu contraseña normal: crea una «contraseña de aplicación».")
+        self.fields["usuario"].nota_etiqueta = False  # necesario para enviar
         if self.instance.tiene_clave:
+            self.fields["clave"].nota_etiqueta = "ya guardada"
+            self.fields["clave"].help_text = "Déjalo vacío para mantener la actual. Escribe una nueva solo si la quieres cambiar."
             self.fields["clave"].widget.attrs["placeholder"] = "•••••••• (guardada)"
+        else:
+            self.fields["clave"].nota_etiqueta = False  # obligatoria para enviar: no decir "opcional"
+            self.fields["clave"].widget.attrs["aria-required"] = "true"
+            self.fields["clave"].help_text = "No es tu contraseña normal de Gmail: crea una «contraseña de aplicación» (ver guía abajo)."
         self.fields["activo"].help_text = "Apagado: modo prueba, los correos solo se muestran en la consola."
 
     def clean(self):

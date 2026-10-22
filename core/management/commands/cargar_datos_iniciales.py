@@ -65,6 +65,12 @@ NOMBRES = [("Camila", "Rojas", "F"), ("Valentina", "Muñoz", "F"), ("Diego", "So
            ("Ignacia", "Morales", "F"), ("Tomás", "Fuentes", "M"), ("Catalina", "Araya", "F")]
 
 
+def sin_tildes(texto):
+    """Los correos no deben llevar tildes ni ñ: 'Pérez' -> 'perez'."""
+    import unicodedata
+    return unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode().lower()
+
+
 def run_valido(cuerpo):
     from core.rut import calcular_dv
     return f"{cuerpo}-{calcular_dv(cuerpo)}"
@@ -135,7 +141,7 @@ class Command(BaseCommand):
             u = Usuario.objects.filter(run=str(cuerpo)).first()
             if not u:
                 u = Usuario.objects.create_user(run_valido(cuerpo), clave, nombre=nombre, ap_paterno=ap,
-                                                correo=f"{nombre.lower()}@vicentecortez.cl",
+                                                correo=f"{sin_tildes(nombre)}@vicentecortez.cl",
                                                 telefono="+56912345678", genero=genero, contrato=contrato)
             u.roles.add(*roles)
             return u
@@ -163,7 +169,7 @@ class Command(BaseCommand):
             cuerpo = 20000000 + i * 1371
             c = Cliente.objects.filter(run=str(cuerpo)).first() or Cliente.objects.create(
                 run=str(cuerpo), dv=run_valido(cuerpo)[-1], nombre=nombre, ap_paterno=ap, genero=g,
-                telefono=f"+5699{random.randint(1000000, 9999999)}", correo=f"{nombre.lower()}.{ap.lower()}@correo.cl",
+                telefono=f"+5699{random.randint(1000000, 9999999)}", correo=f"{sin_tildes(nombre)}.{sin_tildes(ap)}@correo.cl",
                 fecha_nac=hoy - timedelta(days=365 * random.randint(20, 55)),
                 estilista_fijo=peluqueros[i % 3] if i % 2 == 0 else None, creado_por=admin)
             clientes.append(c)

@@ -351,3 +351,14 @@ class PromocionEnFichaTests(Base):
         r = self.client.get(reverse("fichas:detalle", args=[ficha.pk]))
         self.assertContains(r, "Cubierto por promoción")
         self.assertContains(r, "Aplicada")
+
+
+class CorreoPruebaTests(Base):
+    def test_boton_correo_de_prueba(self):
+        from django.core import mail
+        self.entrar(self.admin)
+        r = self.client.post(reverse("seguimiento:canales"), {"probar_correo": "prueba@vicentecortez.cl"}, follow=True)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(mail.outbox[-1].to, ["prueba@vicentecortez.cl"])
+        r = self.client.post(reverse("seguimiento:canales"), {"probar_correo": "no-es-correo"}, follow=True)
+        self.assertContains(r, "no es un correo válido")

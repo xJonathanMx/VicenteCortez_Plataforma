@@ -1,4 +1,7 @@
 from django import forms
+from django.core.exceptions import ValidationError
+from django.core.mail import send_mail
+from django.core.validators import validate_email
 from django.conf import settings
 from django.contrib import messages
 from django.db.models import Avg, Count, Q
@@ -94,6 +97,8 @@ def reintentar(request, tipo, pk):
 def canales(request):
     """RF-PA-13: canales disponibles y plantillas de mensajes."""
     if request.method == "POST":
+        if "probar_correo" in request.POST:
+            return probar_correo(request)
         if "canal" in request.POST:
             c = get_object_or_404(CanalComunicacion, pk=request.POST["canal"])
             c.activo = not c.activo
@@ -109,9 +114,34 @@ def canales(request):
     plantillas = [(p, PlantillaForm(instance=p, prefix=f"p{p.pk}"))
                   for p in Plantilla.objects.filter(canal__codigo__in=settings.CANALES_ENVIO)
                   .select_related("canal").order_by("tipo", "canal__nombre")]
-    return render(request, "seguimiento/canales.html", {"canales": CanalComunicacion.objects.all(),
-                                                         "plantillas": plantillas,
-                                                         "habilitados": settings.CANALES_ENVIO})
+    return render(request, "seguimiento/canales.html", {
+        "canales": CanalComunicacion.objects.all(), "plantillas": plantillas, "habilitados": settings.CANALES_ENVIO,
+        "correo_real": not settings.EMAIL_BACKEND.endswith(("console.EmailBackend", "locmem.EmailBackend")),
+        "remitente": settings.DEFAULT_FROM_EMAIL})
+
+
+def probar_correo(request):
+    """Envía un correo de prueba con la configuración actual y muestra el resultado o el error."""
+    destino = request.POST.get("probar_correo", "").strip()
+    try:
+        validate_email(destino)
+    except ValidationError:
+        messages.error(request, f"«{destino or 'vacío'}» no es un correo válido.")
+        return redirect("seguimiento:canales")
+    try:
+        send_mail("Prueba de correo: Peluquería Vicente Cortez",
+                  f"Hola, este es un correo de prueba enviado desde la plataforma por {request.user.nombre_corto}.\n"
+                  "Si lo recibiste, los recordatorios y valoraciones también van a llegar.",
+                  None, [destino])
+    except Exception as e:  # credenciales, servidor caído, etc.
+        messages.error(request, f"No se pudo enviar: {e}. Revisa EMAIL_HOST, EMAIL_HOST_USER y EMAIL_HOST_PASSWORD en el .env.")
+        return redirect("seguimiento:canales")
+    if settings.EMAIL_BACKEND.endswith("console.EmailBackend"):
+        messages.warning(request, "El correo se generó, pero el sistema está en modo prueba: aparece en la consola del "
+                                  "servidor y no llega a la bandeja. Configura el SMTP en el .env para enviarlo de verdad.")
+    else:
+        messages.success(request, f"Correo enviado a {destino}. Revisa la bandeja de entrada (y spam).")
+    return redirect("seguimiento:canales")
 
 
 def valorar_publico(request, token):

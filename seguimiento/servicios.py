@@ -24,8 +24,8 @@ log = logging.getLogger("seguimiento")
 
 TEXTOS_POR_DEFECTO = {
     "valoracion": ("¿Cómo te fue en Vicente Cortez?",
-                   "Hola {nombre}, gracias por visitarnos. ¿Cómo está tu {servicio}? "
-                   "Califica tu atención con {peluquero} del 1 al 5 aquí: {enlace}"),
+                   "Hola {nombre}, gracias por visitarnos. ¿Cómo quedaste con tu atención ({servicio})? "
+                   "Califica a {peluquero} del 1 al 5 aquí: {enlace}"),
     "renovacion": ("Es momento de renovar tu {servicio}",
                    "Hola {nombre}, ya pasó el tiempo recomendado desde tu {servicio}. "
                    "Para mantener el resultado te sugerimos agendar tu renovación. ¡Te esperamos!"),

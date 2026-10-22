@@ -218,6 +218,15 @@ def _valoracion_ejemplo(nombre="Camila"):
                            enlace=f"{settings.SITIO_URL.rstrip('/')}/valorar/ejemplo/")
 
 
+@privilegio_requerido("configurar_canales")
+def vista_previa_valoracion(request):
+    """Muestra el correo de valoración tal como lo ve el cliente, sin enviarlo."""
+    from django.http import HttpResponse
+    v = _valoracion_ejemplo(request.user.nombre)
+    ctx = {"nombre": request.user.nombre, "servicio": "corte dama", "peluquero": "Andrea", "enlace": v.enlace}
+    return HttpResponse(ss.html_valoracion(v, ctx))
+
+
 def enviar_ejemplo_valoracion(request, destino):
     """Envía al administrador el correo de valoración tal como lo recibe un cliente, con datos de ejemplo."""
     from django.core.mail import EmailMultiAlternatives

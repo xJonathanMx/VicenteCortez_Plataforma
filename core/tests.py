@@ -468,3 +468,13 @@ class CorreoEstrellasTests(Base):
         self.entrar(self.admin)
         self.client.post(reverse("seguimiento:canales"), {"probar_correo": "yo@vicentecortez.cl", "ejemplo": "valoracion"})
         self.assertIn("/valorar/ejemplo/?nota=3", mail.outbox[-1].alternatives[0][0])
+
+
+class VistaPreviaCorreoTests(Base):
+    def test_vista_previa_solo_admin(self):
+        url = reverse("seguimiento:vista_previa_valoracion")
+        self.entrar(self.admin)
+        r = self.client.get(url)
+        self.assertContains(r, "Toca una estrella")
+        self.entrar(self.pelu)
+        self.assertEqual(self.client.get(url).status_code, 403)

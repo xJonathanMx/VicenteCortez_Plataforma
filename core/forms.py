@@ -43,7 +43,8 @@ class CampoRun(forms.CharField):
         kwargs.setdefault("max_length", 12)
         kwargs.setdefault("help_text", "Con dígito verificador, ej. 12.345.678-5")
         super().__init__(*args, **kwargs)
-        self.widget.attrs.update({"autocomplete": "off", "inputmode": "text", "placeholder": "12.345.678-5"})
+        self.widget.attrs.update({"autocomplete": "off", "inputmode": "text",
+                          "placeholder": "12.345.678-5", "data-run": "1"})
 
     def clean(self, value):
         value = super().clean(value)
@@ -55,7 +56,7 @@ class CampoRun(forms.CharField):
 class LoginForm(Estilo, AuthenticationForm):
     """RF-AS-03: un único mensaje genérico, no revela si el RUN existe."""
     username = forms.CharField(label="RUN", max_length=12, widget=forms.TextInput(attrs={
-        "autofocus": True, "autocomplete": "username", "placeholder": "12.345.678-5"}))
+        "autofocus": True, "autocomplete": "username", "placeholder": "12.345.678-5", "data-run": "1"}))
     error_messages = {
         "invalid_login": "RUN o contraseña incorrectos.",
         "inactive": "RUN o contraseña incorrectos.",

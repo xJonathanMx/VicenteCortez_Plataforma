@@ -18,12 +18,12 @@ class Migration(migrations.Migration):
             name='NivelIncentivo',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, db_comment='Id', primary_key=True, serialize=False, verbose_name='ID')),
-                ('porcentaje_minimo', models.PositiveSmallIntegerField(db_comment='Cumplimiento mínimo (%)', unique=True, verbose_name='cumplimiento mínimo (%)')),
-                ('porcentaje_pago', models.PositiveSmallIntegerField(db_comment='% del incentivo base que se informa', verbose_name='% del incentivo base que se informa')),
+                ('porcentaje_minimo', models.PositiveSmallIntegerField(db_comment='Cumplimiento mínimo (Porcentaje)', unique=True, verbose_name='cumplimiento mínimo (%)')),
+                ('porcentaje_pago', models.PositiveSmallIntegerField(db_comment='Porcentaje del incentivo base que se informa', verbose_name='% del incentivo base que se informa')),
             ],
             options={
                 'db_table': 'nivel_incentivo',
-                'db_table_comment': 'Escala de incentivo según % de cumplimiento (RF-CI-11).',
+                'db_table_comment': 'Escala de incentivo según porcentaje de cumplimiento (RF-CI-11).',
                 'ordering': ['porcentaje_minimo'],
             },
         ),

@@ -38,7 +38,7 @@ class Migration(migrations.Migration):
                 ('modificado_en', models.DateTimeField(auto_now=True, db_comment='Modificado en', verbose_name='modificado en')),
                 ('variante', models.CharField(choices=[('basico', 'Básico'), ('plus', 'Plus'), ('ultra_plus', 'Ultra plus')], db_comment='Calidad', default='basico', max_length=12, verbose_name='calidad')),
                 ('precio_cobrado', models.PositiveIntegerField(db_comment='Precio cobrado', verbose_name='precio cobrado')),
-                ('porc_comision_guardado', models.DecimalField(db_comment='Comisión (%)', decimal_places=2, default=0, max_digits=5, verbose_name='comisión (%)')),
+                ('porc_comision_guardado', models.DecimalField(db_comment='Comisión (Porcentaje)', decimal_places=2, default=0, max_digits=5, verbose_name='comisión (%)')),
                 ('aplica_comision', models.BooleanField(db_comment='Aplica comisión', default=False, verbose_name='aplica comisión')),
                 ('estado', models.CharField(choices=[('pendiente', 'Pendiente'), ('en_proceso', 'En proceso'), ('terminado', 'Terminado')], db_column='estado_atencion', db_comment='Estado', default='pendiente', max_length=12, verbose_name='estado')),
                 ('hora_inicio', models.DateTimeField(blank=True, db_column='hora_inicio_servicio', db_comment='Hora de inicio', null=True, verbose_name='hora de inicio')),

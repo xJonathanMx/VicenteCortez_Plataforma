@@ -1,8 +1,38 @@
+# Entorno virtual de Python (pesado y específico de cada PC; cada quien debe instalar sus propias dependencias)
 venv/
+
+# Caché y binarios compilados de Python (se generan automáticamente al ejecutar el código)
 __pycache__/
 *.pyc
+
+# Base de datos local de SQLite (evita que se sobreescriban los datos de prueba entre los miembros del equipo)
 db.sqlite3
+
+# Archivos de variables de entorno (contienen credenciales sensibles como contraseñas o URIs de Supabase)
 .env
+.env.*
+
+# Excepción a la regla anterior: Sí permite subir la plantilla vacía para que el equipo sepa qué variables configurar
+!.env.example
+
+# Archivos estáticos recopilados por Django (se generan de forma automática al preparar el entorno de producción)
 staticfiles/
+
+# Archivos multimedia subidos por los usuarios durante las pruebas locales
+media/
+
+# Dependencias de Node.js (carpeta muy pesada; el equipo debe generarla ejecutando 'npm install')
 node_modules/
+
+# Bloqueo de versiones de Node (Nota: generalmente sí se sube al repositorio, a menos que usen Yarn o pnpm)
 package-lock.json
+
+# Registros de eventos, advertencias y errores del sistema local
+*.log
+
+# Configuraciones y preferencias personales de los editores de código (VS Code o familia JetBrains)
+.vscode/
+.idea/
+
+# Metadatos y archivos basura ocultos generados automáticamente por el sistema operativo macOS
+.DS_Store

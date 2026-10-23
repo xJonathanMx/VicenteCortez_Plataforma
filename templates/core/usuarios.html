@@ -9,7 +9,7 @@
   </div>
 </div>
 <form class="filtros" method="get">
-  <div><label class="form-label" for="q">Buscar</label><input class="form-control" id="q" name="q" value="{{ q }}" placeholder="Nombre o RUN"></div>
+  <div><label class="form-label" for="q">Buscar</label><input class="form-control" data-run="1" id="q" name="q" value="{{ q }}" placeholder="Nombre o RUN"></div>
   <div><label class="form-label" for="estado">Estado</label>
     <select class="form-select" id="estado" name="estado">
       <option value="activos" {% if estado == 'activos' %}selected{% endif %}>Activos</option>

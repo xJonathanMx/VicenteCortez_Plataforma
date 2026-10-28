@@ -11,7 +11,8 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
 
-from catalogo.models import Comision, Insumo, Servicio, TipoServicio, UsuarioServicio
+from catalogo.models import (Comision, HistoricoEstadoServicio, HistoricoPrecioServicio, Insumo, Servicio, TipoServicio,
+                             UsuarioServicio)
 from core.models import (Especialidad, NivelHabilidad, Privilegio, Rol, TipoContrato, TipoEstado, Usuario,
                          UsuarioEspecialidad)
 from core.permisos import PRIVILEGIOS, ROLES_BASE
@@ -23,30 +24,116 @@ ESPECIALIDADES = ["Colorimetría", "Corte", "Alisados", "Tratamientos capilares"
 
 # tipo: (regla de valoración, comisión externos %, [(servicio, precio, plus, ultra, minutos, días renovación, especialidad)])
 CATALOGO = {
-    "Corte": ("corte", 40, [
-        ("Corte dama", 18000, 22000, 28000, 45, None, "Corte"),
-        ("Corte varón", 12000, 15000, None, 30, None, "Corte"),
-        ("Corte infantil", 9000, None, None, 25, None, "Corte"),
+    "Corte": ("corte", 40, "Corte", [
+        ("Tijeras calientes", 45000, None, 60, None,
+         "Corte con tijeras térmicas que sellan la cutícula al cortar; previene puntas abiertas y retiene la humedad."),
+        ("Corte elaborado", 35000, None, 60, None,
+         "Cambio de look o diseño avanzado: texturizado, capas conectadas, asimetrías o adaptación a las facciones."),
+        ("Corte tradicional", 25000, None, 45, None,
+         "Corte clásico de mantenimiento que devuelve forma y frescura al estilo actual."),
+        ("Corte de puntas", 15000, None, 20, None,
+         "Elimina puntas abiertas o resecas conservando el largo. No incluye lavado."),
     ]),
-    "Colorimetría": ("tratamiento", 35, [
-        ("Balayage", 85000, 110000, 140000, 180, 90, "Colorimetría"),
-        ("Visos", 60000, 75000, 95000, 120, 75, "Colorimetría"),
-        ("Raíz", 35000, 42000, 52000, 75, 35, "Colorimetría"),
-        ("Tintura completa", 45000, 55000, 70000, 90, 45, "Colorimetría"),
+    "Estilismo": ("ninguno", 40, "Peinados", [
+        ("Peinados", 45000, None, 60, None,
+         "Diseño capilar para eventos o el día a día: ondas, trenzas, semi-recogidos y moños estructurados."),
+        ("Lavado + Brushing", 35000, None, 45, None,
+         "Lavado profesional con secado y moldeado térmico con cepillo: pule la fibra y controla el volumen."),
     ]),
-    "Alisados": ("tratamiento", 30, [
-        ("Alisado keratina", 70000, 90000, 120000, 150, 120, "Alisados"),
-        ("Botox capilar", 45000, 58000, 75000, 90, 60, "Tratamientos capilares"),
+    "Colorimetría": ("tratamiento", 35, "Colorimetría", [
+        ("Balayage", 95000, 130000, 180, 90,
+         "Degradado a mano alzada con efecto de iluminación natural; mantiene la raíz y aclara hacia las puntas."),
+        ("Babylights + Baño de color", 75000, 110000, 150, 75,
+         "Reflejos ultrafinos complementados con un baño de color que unifica y matiza el tono."),
+        ("Full babylight (Full Barbie)", 110000, 180000, 240, 90,
+         "Aclarado máximo con abundantes micro-reflejos de raíz a puntas para un rubio global extra claro."),
+        ("Barrido de color", 150000, None, 180, None,
+         "Técnica correctiva que extrae pigmentos artificiales no deseados; más suave que un decapado profundo."),
+        ("Reflejos en cabello natural", 45000, 65000, 90, 75,
+         "Iluminación suave para cabellos vírgenes: aclara mechones seleccionados para dar luz y dimensión."),
+        ("Shades EQ Redken", 65000, None, 60, 35,
+         "Coloración semipermanente con hidratación y brillo espejo; revive tonos, neutraliza reflejos y matiza canas."),
+        ("Solo contorno", 55000, None, 90, 75,
+         "Iluminación en los mechones frontales alrededor del rostro, sin decolorar todo el cabello."),
+        ("Color generalizado", 42000, 55000, 90, 45,
+         "Tinte en todo el cabello de raíz a puntas para cambiar de color, emparejar o cubrir canas."),
+        ("Tintura visada", 65000, 85000, 120, 60,
+         "Color de base más iluminación (visos) en una sola sesión."),
+        ("Baño de color", 35990, None, 45, 35,
+         "Devuelve vida, brillo e intensidad a cabellos teñidos y neutraliza tonos no deseados."),
+        ("Babylights + Balayage", 110000, 150000, 210, 90,
+         "Babylights en la parte superior o raíz con degradado balayage hacia las puntas."),
+        ("Decapado", 200000, None, 240, None,
+         "Elimina pigmentos de tintes anteriores; paso previo para pasar de un tono oscuro teñido a uno mucho más claro."),
+        ("Escondido", 85000, None, 120, 75,
+         "Iluminación o color fantasía solo en las capas inferiores y ocultas del cabello."),
+        ("Visos", 55000, 75000, 120, 75,
+         "Reflejos tradicionales y definidos que aportan luz, contraste y sensación de volumen."),
+        ("Adicional por tinturas INOA", 18990, None, 0, None,
+         "Adicional premium L'Oréal: tintura permanente sin amoníaco y a base de aceites, para cueros cabelludos sensibles."),
+        ("Diseños en fantasía", 75000, 120000, 180, None,
+         "Tonos vibrantes y creativos; generalmente requiere decoloración previa."),
+        ("Mechas con papel", 95000, 180000, 180, 75,
+         "Iluminación con papel aluminio que aísla los mechones para aclarados más precisos e intensos."),
+        ("Raíz + Baño de color", 42000, 65000, 90, 35,
+         "Retoque del crecimiento de la raíz más baño de color en largos y puntas para refrescar el tono."),
     ]),
-    "Tratamientos": ("tratamiento", 30, [
-        ("Hidratación profunda", 25000, 32000, 40000, 45, 30, "Tratamientos capilares"),
-        ("Reconstrucción", 38000, 48000, 60000, 60, 30, "Tratamientos capilares"),
+    "Alisados": ("tratamiento", 30, "Alisados", [
+        ("Coffee Premium", 55000, 85000, 150, 120,
+         "Alisado intensivo a base de queratina y extractos de café, para cabellos rebeldes, gruesos o muy rizados."),
+        ("Coffee Premium Colágeno", 55000, 85000, 150, 120,
+         "Alisado e hidratación profunda con café y colágeno: reduce volumen, regenera la fibra y da elasticidad."),
+        ("Alisado progresivo Açaí Verde Pra Você", 55000, 85000, 150, 120,
+         "Cabello liso, brillante y sin frizz con colágeno vegetal, açaí verde y vitamina C."),
+        ("Thermic Liss", 45000, 65000, 120, 90,
+         "Tratamiento disciplinante termo-activo que relaja la onda y controla el frizz; se activa con calor."),
     ]),
-    "Peinados": ("ninguno", 40, [
-        ("Brushing", 15000, 18000, None, 40, None, "Peinados"),
-        ("Peinado de evento", 35000, 45000, None, 60, None, "Peinados"),
+    "Botox capilar": ("tratamiento", 30, "Tratamientos capilares", [
+        ("Botox H-Brush", 45990, 75000, 90, 60,
+         "Reconstructor intensivo con queratina, té verde y aceite de pracaxi; elimina el frizz y devuelve elasticidad y brillo."),
+        ("Reconstrucción y rejuvenecimiento Açaí Pra Você (Botox matizante)", 55000, 85000, 90, 60,
+         "Reconstrucción profunda con colágeno vegetal y açaí; además matiza y enfría tonos oxidados o amarillentos."),
+    ]),
+    "Aditivos protectores": ("ninguno", 30, "Tratamientos capilares", [
+        ("Metal Detox", 20000, 20000, 20, None,
+         "Aditivo L'Oréal que elimina micropartículas de metales de la fibra; evita el quiebre al decolorar."),
+        ("Olaplex", 25000, 25000, 20, None,
+         "Se añade al proceso químico para proteger y reconstruir los enlaces internos del cabello."),
+    ]),
+    "Masajes y tratamientos de reposición": ("tratamiento", 30, "Tratamientos capilares", [
+        ("Máscara L'Oréal", 35990, None, 30, 30,
+         "Máscaras profesionales de hidratación y nutrición profunda según la necesidad del cabello."),
+        ("Acidic Concentrate Redken", 55990, None, 45, 30,
+         "Tratamiento intensivo que equilibra, sella la cutícula y refuerza los puentes tras procesos químicos."),
+        ("Ritual de lujo Fusio-Dose Kérastase", 65000, None, 45, 30,
+         "Tratamiento molecular personalizado: concentrado más booster mezclados al momento."),
+        ("Olaplex stand alone", 75000, None, 60, 45,
+         "Reconstrucción profunda en dos pasos, sin proceso de color, para cabellos severamente dañados."),
+        ("4 en 1 Olaplex", 55000, None, 45, 30,
+         "Mascarilla concentrada: hidratación, suavidad, brillo y cuerpo sin aportar peso."),
+        ("Premiere Kérastase", 55000, None, 45, 30,
+         "Doble acción: elimina la acumulación de calcio y repara los enlaces de queratina."),
+        ("Ampolla Mottita", 25000, None, 30, 30,
+         "Tratamiento ultra concentrado de acción rápida: nutrientes, brillo y suavidad."),
+        ("Adicionar ampolla Mottita a otro servicio", 15000, None, 10, None,
+         "Se añade la ampolla en el lavapelos para sellar la fibra tras el servicio principal."),
+        ("Masaje Metal Detox adicional a otro servicio", 15990, None, 15, None,
+         "Mascarilla y tratamiento detoxificante como cierre de otro servicio."),
     ]),
 }
+
+EJEMPLOS_ANTIGUOS = {
+    "Corte": ["Corte dama", "Corte varón", "Corte infantil"],
+    "Colorimetría": ["Raíz", "Tintura completa"],
+    "Alisados": ["Alisado keratina", "Botox capilar"],
+    "Tratamientos": ["Hidratación profunda", "Reconstrucción"],
+    "Peinados": ["Brushing", "Peinado de evento"],
+}
+TIPOS_ANTIGUOS = ["Tratamientos", "Peinados"]
+
+
+def pesos(n):
+    return "$" + f"{n:,}".replace(",", ".")
 
 INSUMOS = [
     ("Tintura", "L'Oréal Majirel", "Profesional", "g"),
@@ -111,21 +198,50 @@ class Command(BaseCommand):
             for canal in canales.values():
                 Plantilla.objects.get_or_create(tipo=tipo, canal=canal, defaults={"asunto": asunto, "cuerpo": cuerpo})
 
-        for tipo_nombre, (regla, pct, servicios) in CATALOGO.items():
+        for tipo_nombre, (regla, pct, esp, servicios) in CATALOGO.items():
             tipo, _ = TipoServicio.objects.get_or_create(nombre=tipo_nombre, defaults={"seguimiento": regla})
             Comision.objects.get_or_create(tipo_servicio=tipo, contrato=externo, defaults={"porcentaje": pct})
             Comision.objects.get_or_create(tipo_servicio=tipo, contrato=interno, defaults={"porcentaje": 0})
-            for nombre, precio, plus, ultra, minutos, renov, esp in servicios:
-                s, _ = Servicio.objects.get_or_create(tipo=tipo, nombre=nombre, defaults={
-                    "precio": precio, "precio_plus": plus, "precio_ultra_plus": ultra,
-                    "tiempo_estimado": minutos, "dia_renovacion": renov})
+            for nombre, desde, hasta, minutos, renov, descripcion in servicios:
+                if hasta is None:
+                    obs = f"Precio lista desde {pesos(desde)}"
+                elif hasta == desde:
+                    obs = f"Precio lista {pesos(desde)}"
+                else:
+                    obs = f"Precio lista {pesos(desde)} a {pesos(hasta)}"
+                datos = {"precio": desde, "precio_plus": None, "precio_ultra_plus": None, "tiempo_estimado": minutos,
+                         "dia_renovacion": renov, "descripcion": descripcion, "observacion": obs}
+                s, creado = Servicio.objects.get_or_create(tipo=tipo, nombre=nombre, defaults=datos)
+                if not creado and not s.observacion:
+                    # Servicio de ejemplo viejo con el mismo nombre: se corrige al precio de lista
+                    if s.precio != desde:
+                        HistoricoPrecioServicio.objects.create(servicio=s, variante="basico",
+                                                               precio_anterior=s.precio, precio_nuevo=desde)
+                    for campo, valor in datos.items():
+                        setattr(s, campo, valor)
+                    s.activo = True
+                    s.save()
                 s.especialidades.add(Especialidad.objects.get(nombre=esp))
+        self.retirar_ejemplos()
         for nombre, marca, calidad, unidad in INSUMOS:
             Insumo.objects.get_or_create(nombre=nombre, marca=marca, calidad=calidad, defaults={"unidad_medida": unidad})
 
         self.stdout.write(self.style.SUCCESS("Catálogos base cargados."))
         if opts["demo"]:
             self.demo(interno, externo)
+
+    def retirar_ejemplos(self):
+        """Desactiva (con historial) los servicios y tipos de ejemplo de la primera versión."""
+        inactivo = TipoEstado.objects.get(nombre="Inactivo")
+        for tipo_nombre, nombres in EJEMPLOS_ANTIGUOS.items():
+            for s in Servicio.objects.filter(tipo__nombre=tipo_nombre, nombre__in=nombres, activo=True):
+                s.activo = False
+                s.save(update_fields=["activo"])
+                HistoricoEstadoServicio.objects.create(
+                    servicio=s, tipo_estado=inactivo,
+                    motivo="Reemplazado por el catálogo real de la peluquería")
+        TipoServicio.objects.filter(nombre__in=TIPOS_ANTIGUOS, activo=True).exclude(
+            servicios__activo=True).update(activo=False)
 
     def demo(self, interno, externo):
         from clientes.models import Cliente
@@ -195,7 +311,7 @@ class Command(BaseCommand):
                         fs.validar_ficha(ficha, admin)
             # Un servicio en curso para ver el estado "ocupado".
             ficha = fs.abrir_ficha(admin, clientes[0], diagnostico="Raíz de 3 cm, canas 30%.")
-            det = fs.agregar_servicio(ficha, Servicio.objects.get(nombre="Raíz"), peluqueros[0], "plus", admin)
+            det = fs.agregar_servicio(ficha, Servicio.objects.get(nombre="Raíz + Baño de color"), peluqueros[0], "plus", admin)
             fs.iniciar_servicio(det, admin)
 
         for p in peluqueros:

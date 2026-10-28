@@ -121,8 +121,8 @@ class FichaTests(Base):
         return ficha, d
 
     def test_flujo_completo_corte(self):
-        ficha, d = self.nueva_ficha("Corte dama")
-        self.assertEqual(d.precio_cobrado, Servicio.objects.get(nombre="Corte dama").precio_plus)
+        ficha, d = self.nueva_ficha("Corte tradicional")
+        self.assertEqual(d.precio_cobrado, Servicio.objects.get(nombre="Corte tradicional").precio_de("plus"))
         self.assertTrue(d.aplica_comision)  # Andrea es externa
         with self.assertRaises(ValidationError):
             fs.terminar_servicio(d, self.pelu)  # no se puede terminar sin iniciar
@@ -142,14 +142,14 @@ class FichaTests(Base):
         self.assertTrue(d.recordatorios.filter(tipo="renovacion").exists())
 
     def test_no_cierra_con_servicios_abiertos(self):
-        ficha, d = self.nueva_ficha("Corte dama")
+        ficha, d = self.nueva_ficha("Corte tradicional")
         with self.assertRaises(ValidationError):
             fs.cerrar_ficha(ficha, self.admin)
 
     def test_precio_congelado(self):
-        ficha, d = self.nueva_ficha("Corte dama")
+        ficha, d = self.nueva_ficha("Corte tradicional")
         precio = d.precio_cobrado
-        Servicio.objects.filter(nombre="Corte dama").update(precio_plus=99999)
+        Servicio.objects.filter(nombre="Corte tradicional").update(precio=99999)
         d.refresh_from_db()
         self.assertEqual(d.precio_cobrado, precio)
 
@@ -158,16 +158,16 @@ class FichaTests(Base):
         UsuarioServicio.objects.filter(usuario=self.pelu).update(activo=False)
         ficha = fs.abrir_ficha(self.admin, self.cliente)
         with self.assertRaises(ValidationError):
-            fs.agregar_servicio(ficha, Servicio.objects.get(nombre="Corte dama"), self.pelu, "basico", self.admin)
+            fs.agregar_servicio(ficha, Servicio.objects.get(nombre="Corte tradicional"), self.pelu, "basico", self.admin)
 
     def test_anular_guarda_version(self):
-        ficha, d = self.nueva_ficha("Corte dama")
+        ficha, d = self.nueva_ficha("Corte tradicional")
         fs.anular_ficha(ficha, self.admin, "Ficha duplicada")
         self.assertEqual(ficha.estado_id, "anulada")
         self.assertEqual(ficha.versiones.count(), 1)
 
     def test_botones_por_web(self):
-        ficha, d = self.nueva_ficha("Corte dama")
+        ficha, d = self.nueva_ficha("Corte tradicional")
         self.entrar(self.pelu)
         # Andrea ya tiene otro servicio en curso en los datos demo: se confirma el inicio simultáneo.
         self.client.post(reverse("fichas:iniciar", args=[d.pk]), {"confirmar": "1"})
@@ -180,7 +180,7 @@ class FichaTests(Base):
 class SeguimientoTests(Base):
     def test_envio_y_respuesta(self):
         ficha = fs.abrir_ficha(self.admin, self.cliente)
-        d = fs.agregar_servicio(ficha, Servicio.objects.get(nombre="Corte dama"), self.pelu, "basico", self.admin)
+        d = fs.agregar_servicio(ficha, Servicio.objects.get(nombre="Corte tradicional"), self.pelu, "basico", self.admin)
         fs.iniciar_servicio(d, self.pelu)
         fs.terminar_servicio(d, self.pelu)
         fs.cerrar_ficha(ficha, self.pelu)
@@ -202,7 +202,7 @@ class SeguimientoTests(Base):
         self.cliente.correo = ""
         self.cliente.save()
         ficha = fs.abrir_ficha(self.admin, self.cliente)
-        d = fs.agregar_servicio(ficha, Servicio.objects.get(nombre="Corte dama"), self.pelu, "basico", self.admin)
+        d = fs.agregar_servicio(ficha, Servicio.objects.get(nombre="Corte tradicional"), self.pelu, "basico", self.admin)
         fs.iniciar_servicio(d, self.pelu)
         fs.terminar_servicio(d, self.pelu)
         fs.cerrar_ficha(ficha, self.pelu)
@@ -304,7 +304,7 @@ class SimultaneosTests(Base):
     def test_pide_confirmacion_si_hay_otro_en_curso(self):
         f1 = fs.abrir_ficha(self.admin, self.cliente)
         d1 = fs.agregar_servicio(f1, Servicio.objects.get(nombre="Balayage"), self.pelu, "basico", self.admin)
-        d2 = fs.agregar_servicio(f1, Servicio.objects.get(nombre="Corte dama"), self.pelu, "basico", self.admin)
+        d2 = fs.agregar_servicio(f1, Servicio.objects.get(nombre="Corte tradicional"), self.pelu, "basico", self.admin)
         fs.iniciar_servicio(d1, self.pelu)
         self.entrar(self.pelu)
         self.client.post(reverse("fichas:iniciar", args=[d2.pk]), {"confirmar": ""})
@@ -319,7 +319,7 @@ class SimultaneosTests(Base):
         carla = Usuario.objects.get(run="18888888")
         fs.DetalleAtencionServicio.objects.filter(peluquero=carla, estado="en_proceso").update(estado="terminado")
         f = fs.abrir_ficha(self.admin, self.cliente)
-        d = fs.agregar_servicio(f, Servicio.objects.get(nombre="Corte dama"), carla, "basico", self.admin)
+        d = fs.agregar_servicio(f, Servicio.objects.get(nombre="Corte tradicional"), carla, "basico", self.admin)
         self.assertEqual(fs.aviso_simultaneo(d), "")
         self.entrar(carla)
         self.client.post(reverse("fichas:iniciar", args=[d.pk]))
@@ -330,8 +330,8 @@ class SimultaneosTests(Base):
 class PromocionEnFichaTests(Base):
     def test_promocion_solo_para_servicios_de_la_ficha(self):
         from beneficios.models import ClientePromocion, Promocion, PromocionServicio
-        tintura = Servicio.objects.get(nombre="Tintura completa")
-        corte = Servicio.objects.get(nombre="Corte dama")
+        tintura = Servicio.objects.get(nombre="Color generalizado")
+        corte = Servicio.objects.get(nombre="Corte tradicional")
         promo = Promocion.objects.create(nombre="Pack color", precio=90000)
         PromocionServicio.objects.create(promocion=promo, servicio=tintura, cantidad_total=2)
         PromocionServicio.objects.create(promocion=promo, servicio=corte, cantidad_total=1)
@@ -341,7 +341,7 @@ class PromocionEnFichaTests(Base):
         d = fs.agregar_servicio(ficha, tintura, self.pelu, "basico", self.admin)
         self.entrar(self.admin)
         r = self.client.get(reverse("fichas:detalle", args=[ficha.pk]))
-        self.assertContains(r, "Agrega Corte dama a la ficha para usarlo.")  # corte no está en la ficha
+        self.assertContains(r, "Agrega Corte tradicional a la ficha para usarlo.")  # corte no está en la ficha
         self.assertContains(r, "Quedan <strong>2 de 2</strong>", html=False)
         self.client.post(reverse("beneficios:usar_promocion", args=[ficha.pk]), {"uso": f"{cp.pk}-{corte.pk}"})
         self.assertEqual(cp.usos.count(), 0)  # rechazado: no está en la ficha
@@ -442,7 +442,7 @@ class CorreoEstrellasTests(Base):
     def test_valoracion_va_con_estrellas_y_texto(self):
         from django.core import mail
         ficha = fs.abrir_ficha(self.admin, self.cliente)
-        d = fs.agregar_servicio(ficha, Servicio.objects.get(nombre="Corte dama"), self.pelu, "basico", self.admin)
+        d = fs.agregar_servicio(ficha, Servicio.objects.get(nombre="Corte tradicional"), self.pelu, "basico", self.admin)
         fs.iniciar_servicio(d, self.admin)
         fs.terminar_servicio(d, self.admin)
         fs.cerrar_ficha(ficha, self.admin)

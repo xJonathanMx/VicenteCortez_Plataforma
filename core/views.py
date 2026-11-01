@@ -14,14 +14,14 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from catalogo.models import Servicio, UsuarioServicio
-from fichas.models import DetalleAtencionServicio, FichaAtencion
+from .models import (
+    DetalleAtencionServicio, Especialidad, FichaAtencion, HistoricoEstadoUsuario, Privilegio, Rol, Servicio,
+    TipoContrato, TipoEstado, Usuario, UsuarioEspecialidad, UsuarioServicio,
+)
 from fichas.servicios import estado_peluqueros
 
 from .forms import (ClaveAdminForm, ContactoForm, EspecialidadForm, Estilo, LoginForm, MotivoForm, PrivilegioForm,
                     RolForm, TipoContratoForm, UsuarioForm)
-from .models import (Especialidad, HistoricoEstadoUsuario, Privilegio, Rol, TipoContrato, TipoEstado, Usuario,
-                     UsuarioEspecialidad)
 from .permisos import privilegio_requerido
 
 
@@ -48,15 +48,15 @@ def inicio(request):
                                 .select_related("servicio", "ficha__cliente").order_by("-estado", "creado_en"))
         from fichas.views import _con_aviso
         ctx["mis_servicios"] = _con_aviso(ctx["mis_servicios"])
-        from metas.models import MetaMensual
+        from core.models import MetaMensual
         from metas.servicios import avance
         meta = MetaMensual.objects.filter(peluquero=u, mes=hoy.month, anio=hoy.year).first()
         ctx["mi_meta"] = avance(meta) if meta else None
 
     # RF-PA-02: resumen del día para la administración.
     if u.tiene_privilegio("validar_fichas"):
-        from beneficios.models import ClientePromocion, Giftcard
-        from seguimiento.models import Recordatorio, Valoracion
+        from core.models import ClientePromocion, Giftcard
+        from core.models import Recordatorio, Valoracion
         limite = hoy + timedelta(days=settings.AVISO_VENCIMIENTO_DIAS)
         en_curso = DetalleAtencionServicio.objects.filter(estado="en_proceso").select_related(
             "servicio", "peluquero", "ficha__cliente")

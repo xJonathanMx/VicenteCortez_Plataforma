@@ -5,9 +5,8 @@ from django.http import Http404, HttpResponse
 from django.shortcuts import render
 from django.utils import timezone
 
-from catalogo.models import Servicio
+from core.models import Servicio, Usuario
 from core.forms import FormEstilo
-from core.models import Usuario
 from core.permisos import privilegio_requerido
 
 from .generadores import REPORTES

@@ -8,10 +8,10 @@ from django.db import transaction
 from django.forms.models import model_to_dict
 from django.utils import timezone
 
-from catalogo.models import UsuarioServicio
-from core.models import Usuario
-
-from .models import DetalleAtencionServicio, DetalleFichaInsumo, EstadoFicha, FichaAtencion, HistorialEstadoFicha
+from core.models import (
+    DetalleAtencionServicio, DetalleFichaInsumo, EstadoFicha, FichaAtencion, HistorialEstadoFicha, Usuario,
+    UsuarioServicio,
+)
 
 
 def cambiar_estado(ficha, codigo, usuario, motivo=""):
@@ -187,7 +187,7 @@ def snapshot(ficha):
 @transaction.atomic
 def anular_ficha(ficha, usuario, motivo):
     """RF-FA-14: con motivo obligatorio; se conserva la versión original."""
-    from .models import VersionFicha
+    from core.models import VersionFicha
 
     if not usuario.tiene_privilegio("validar_fichas"):
         raise PermissionDenied
@@ -202,7 +202,7 @@ def anular_ficha(ficha, usuario, motivo):
 @transaction.atomic
 def reabrir_para_correccion(ficha, usuario, motivo):
     """RF-FA-14: guarda la versión original y deja la ficha editable para corregirla."""
-    from .models import VersionFicha
+    from core.models import VersionFicha
 
     if not usuario.tiene_privilegio("validar_fichas"):
         raise PermissionDenied

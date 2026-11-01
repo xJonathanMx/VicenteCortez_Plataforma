@@ -7,9 +7,8 @@ from django.db import transaction
 from django.db.models import Count
 from django.utils import timezone
 
-from fichas.models import DetalleAtencionServicio
+from core.models import DetalleAtencionServicio, MetaMensual, NivelIncentivo
 
-from .models import MetaMensual, NivelIncentivo
 
 MESES = ["", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre",
          "octubre", "noviembre", "diciembre"]

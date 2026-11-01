@@ -11,13 +11,12 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
 
-from catalogo.models import (Comision, HistoricoEstadoServicio, HistoricoPrecioServicio, Insumo, Servicio, TipoServicio,
-                             UsuarioServicio)
-from core.models import (Especialidad, NivelHabilidad, Privilegio, Rol, TipoContrato, TipoEstado, Usuario,
-                         UsuarioEspecialidad)
+from core.models import (
+    CanalComunicacion, Comision, Especialidad, HistoricoEstadoServicio, HistoricoPrecioServicio, Insumo,
+    NivelHabilidad, NivelIncentivo, Plantilla, Privilegio, Rol, Servicio, TipoContrato, TipoEstado,
+    TipoServicio, Usuario, UsuarioEspecialidad, UsuarioServicio,
+)
 from core.permisos import PRIVILEGIOS, ROLES_BASE
-from metas.models import NivelIncentivo
-from seguimiento.models import CanalComunicacion, Plantilla
 from seguimiento.servicios import TEXTOS_POR_DEFECTO
 
 ESPECIALIDADES = ["Colorimetría", "Corte", "Alisados", "Tratamientos capilares", "Peinados"]
@@ -244,9 +243,9 @@ class Command(BaseCommand):
             servicios__activo=True).update(activo=False)
 
     def demo(self, interno, externo):
-        from clientes.models import Cliente
+        from core.models import Cliente
         from fichas import servicios as fs
-        from metas.models import MetaMensual
+        from core.models import MetaMensual
 
         admin_rol = Rol.objects.get(codigo="administrador")
         pelu_rol = Rol.objects.get(codigo="peluquero")

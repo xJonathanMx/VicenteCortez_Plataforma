@@ -1,5 +1,6 @@
 # Entorno virtual de Python (pesado y específico de cada PC; cada quien debe instalar sus propias dependencias)
 venv/
+env/
 
 # Caché y binarios compilados de Python (se generan automáticamente al ejecutar el código)
 __pycache__/

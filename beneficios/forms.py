@@ -4,11 +4,10 @@ from django import forms
 from django.db.models import Q
 from django.utils import timezone
 
-from catalogo.models import Servicio
+from core.models import ESTADOS, ClientePromocion, Giftcard, Promocion, Servicio
 from core.forms import FormEstilo, ModelFormEstilo, col
 from fichas.forms import ClienteRunField
 
-from .models import ESTADOS, ClientePromocion, Giftcard, Promocion
 
 FECHA = {"widget": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")}
 

@@ -10,11 +10,10 @@ from django.views.decorators.http import require_POST
 
 from core import rut as rututil
 from core.forms import MotivoForm
-from core.models import TipoEstado
+from core.models import Cliente, ConsultaHistorial, HistoricoEstadoCliente, TipoEstado
 from core.permisos import privilegio_requerido
 
 from .forms import ClienteForm, EstilistaForm
-from .models import Cliente, ConsultaHistorial, HistoricoEstadoCliente
 
 
 def buscar_clientes(q, usuario):
@@ -86,7 +85,7 @@ def detalle(request, run):
     fichas = (cliente.fichas.select_related("estado", "abierta_por")
               .prefetch_related("servicios__servicio", "servicios__peluquero", "servicios__insumos__insumo",
                                 "valoraciones"))
-    from beneficios.models import ClientePromocion, Giftcard
+    from core.models import ClientePromocion, Giftcard
     giftcards = [g for g in Giftcard.objects.filter(beneficiario=cliente, estado="vigente") if g.actualizar_estado() == "vigente"]
     promociones = [p for p in ClientePromocion.objects.filter(Q(comprador=cliente) | Q(beneficiario=cliente),
                                                               estado="vigente").select_related("promocion")

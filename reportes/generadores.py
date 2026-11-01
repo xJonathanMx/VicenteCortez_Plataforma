@@ -8,13 +8,11 @@ from datetime import datetime, time
 from django.db.models import Avg, Count, Q, Sum
 from django.utils import timezone
 
-from beneficios.models import ClientePromocion, Giftcard, UsoGiftcard, UsoPromocion
-from clientes.models import Cliente, ConsultaHistorial
-from core.models import RegistroAcceso, Usuario
-from fichas.models import DetalleAtencionServicio, DetalleFichaInsumo, FichaAtencion
+from core.models import (
+    Cliente, ClientePromocion, ConsultaHistorial, DetalleAtencionServicio, DetalleFichaInsumo, EnvioMensaje,
+    FichaAtencion, Giftcard, MetaMensual, RegistroAcceso, UsoGiftcard, UsoPromocion, Usuario, Valoracion,
+)
 from metas import servicios as ms
-from metas.models import MetaMensual
-from seguimiento.models import EnvioMensaje, Valoracion
 
 
 def rango(f):

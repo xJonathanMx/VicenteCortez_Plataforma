@@ -8,12 +8,11 @@ from django.views.decorators.http import require_POST
 
 from core.forms import MotivoForm
 from core.permisos import privilegio_requerido
-from fichas.models import FichaAtencion
+from core.models import ClientePromocion, FichaAtencion, Giftcard, Promocion, PromocionServicio
 
 from . import servicios as bs
 from .forms import (FiltroBeneficiosForm, GiftcardForm, PromocionForm, UsoGiftcardForm, UsoPromocionForm,
                     VentaPromocionForm)
-from .models import ClientePromocion, Giftcard, Promocion, PromocionServicio
 
 PRIV = "gestionar_beneficios"  # RF-GC-15 / RF-PR-15
 

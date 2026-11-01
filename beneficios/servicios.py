@@ -1,7 +1,7 @@
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 
-from .models import ClientePromocion, Giftcard, UsoGiftcard, UsoPromocion
+from core.models import ClientePromocion, Giftcard, UsoGiftcard, UsoPromocion
 
 
 def _exigir_admin(usuario):

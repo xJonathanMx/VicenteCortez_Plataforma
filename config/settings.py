@@ -31,14 +31,10 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.humanize",
+    # Una sola app con TODOS los modelos (core/models.py) y una sola migración.
+    # Las carpetas clientes/, catalogo/, fichas/, seguimiento/, metas/, beneficios/
+    # y reportes/ quedan solo con vistas, formularios y servicios (no son apps).
     "core",
-    "clientes",
-    "catalogo",
-    "fichas",
-    "seguimiento",
-    "metas",
-    "beneficios",
-    "reportes",
 ]
 
 MIDDLEWARE = [

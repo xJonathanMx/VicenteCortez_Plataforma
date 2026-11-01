@@ -1,9 +1,8 @@
 from django import forms
 
 from core.forms import FormEstilo, ModelFormEstilo, col
-from core.models import TipoContrato
+from core.models import Insumo, Servicio, TipoContrato, TipoServicio
 
-from .models import Insumo, Servicio, TipoServicio
 
 CAMPOS_PRECIO = ["precio", "precio_plus", "precio_ultra_plus"]
 

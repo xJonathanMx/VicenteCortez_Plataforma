@@ -12,16 +12,10 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from beneficios.models import Giftcard
+from .models import Cliente, DetalleAtencionServicio, FichaAtencion, Giftcard, Servicio, Usuario, Valoracion
 from beneficios.servicios import usar_giftcard
-from catalogo.models import Servicio
-from clientes.models import Cliente
 from core import rut
-from core.models import Usuario
 from fichas import servicios as fs
-from fichas.models import DetalleAtencionServicio  # noqa: F401
-from fichas.models import FichaAtencion
-from seguimiento.models import Valoracion
 from seguimiento.servicios import procesar_pendientes
 from reportes.generadores import REPORTES
 
@@ -154,7 +148,7 @@ class FichaTests(Base):
         self.assertEqual(d.precio_cobrado, precio)
 
     def test_peluquero_no_habilitado(self):
-        from catalogo.models import UsuarioServicio
+        from core.models import UsuarioServicio
         UsuarioServicio.objects.filter(usuario=self.pelu).update(activo=False)
         ficha = fs.abrir_ficha(self.admin, self.cliente)
         with self.assertRaises(ValidationError):
@@ -238,7 +232,7 @@ class GiftcardTests(Base):
 class MetasTests(Base):
     def test_guardar_metas_con_lista_de_incentivos(self):
         """Regresión del año '2 026' + lista de incentivos (dinero y regalos)."""
-        from metas.models import MetaMensual
+        from core.models import MetaMensual
         from metas.servicios import avance
         self.entrar(self.admin)
         hoy = timezone.localdate()
@@ -264,7 +258,7 @@ class MetasTests(Base):
         self.assertEqual((m2.incentivo_base, m2.incentivos.count()), (0, 0))
 
     def test_regalo_sin_descripcion_da_error(self):
-        from metas.models import MetaMensual
+        from core.models import MetaMensual
         self.entrar(self.admin)
         hoy = timezone.localdate()
         run = self.pelu.pk
@@ -277,7 +271,7 @@ class MetasTests(Base):
 
 class UsuarioFormTests(Base):
     def test_crear_peluquero_con_especialidad_y_servicios(self):
-        from catalogo.models import UsuarioServicio
+        from core.models import UsuarioServicio
         from core.models import Especialidad, Rol, TipoContrato
         self.entrar(self.admin)
         color = Especialidad.objects.get(nombre="Colorimetría")
@@ -315,7 +309,7 @@ class SimultaneosTests(Base):
         self.assertEqual(d2.estado, "en_proceso")  # confirmado: se permite en paralelo
 
     def test_sin_otros_inicia_directo(self):
-        from catalogo.models import UsuarioServicio
+        from core.models import UsuarioServicio
         carla = Usuario.objects.get(run="18888888")
         fs.DetalleAtencionServicio.objects.filter(peluquero=carla, estado="en_proceso").update(estado="terminado")
         f = fs.abrir_ficha(self.admin, self.cliente)
@@ -329,7 +323,7 @@ class SimultaneosTests(Base):
 
 class PromocionEnFichaTests(Base):
     def test_promocion_solo_para_servicios_de_la_ficha(self):
-        from beneficios.models import ClientePromocion, Promocion, PromocionServicio
+        from core.models import ClientePromocion, Promocion, PromocionServicio
         tintura = Servicio.objects.get(nombre="Color generalizado")
         corte = Servicio.objects.get(nombre="Corte tradicional")
         promo = Promocion.objects.create(nombre="Pack color", precio=90000)
@@ -366,7 +360,7 @@ class CorreoPruebaTests(Base):
 
 class ConfiguracionCorreoTests(Base):
     def test_guardar_cuenta_cifra_la_clave(self):
-        from seguimiento.models import ConfiguracionCorreo
+        from core.models import ConfiguracionCorreo
         self.entrar(self.admin)
         datos = {"guardar_correo": "1", "correo-proveedor": "gmail", "correo-usuario": "peluqueria@gmail.com",
                  "correo-clave": "abcd efgh ijkl mnop", "correo-remitente_nombre": "Peluquería Vicente Cortez",
@@ -398,7 +392,7 @@ class ConfiguracionCorreoTests(Base):
         from unittest import mock
         from django.core.mail import EmailMessage
         from core.correo import BackendConfigurable
-        from seguimiento.models import ConfiguracionCorreo
+        from core.models import ConfiguracionCorreo
         conf = ConfiguracionCorreo.actual()
         conf.usuario, conf.activo = "peluqueria@gmail.com", True
         conf.fijar_clave("secreta")
@@ -426,7 +420,7 @@ class ResponderATests(Base):
         from unittest import mock
         from django.core.mail import EmailMessage
         from core.correo import BackendConfigurable
-        from seguimiento.models import ConfiguracionCorreo
+        from core.models import ConfiguracionCorreo
         conf = ConfiguracionCorreo.actual()
         conf.usuario, conf.activo, conf.responder_a = "peluqueria@gmail.com", True, "vicentecortez@live.cl"
         conf.fijar_clave("secreta")

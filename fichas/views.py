@@ -9,8 +9,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from catalogo.models import Servicio
-from clientes.models import Cliente
+from core.models import Cliente, DetalleAtencionServicio, DetalleFichaInsumo, FichaAtencion, Servicio
 from core import rut as rututil
 from core.forms import MotivoForm
 from core.permisos import exigir, privilegio_requerido
@@ -18,7 +17,6 @@ from core.permisos import exigir, privilegio_requerido
 from . import servicios as fs
 from .forms import (AgregarServicioForm, CierreManualForm, FichaNotasForm, FiltroFichasForm, InsumoUsadoForm,
                     NotasServicioForm, NuevaFichaForm, VincularForm)
-from .models import DetalleAtencionServicio, DetalleFichaInsumo, FichaAtencion
 
 
 def fichas_visibles(usuario):

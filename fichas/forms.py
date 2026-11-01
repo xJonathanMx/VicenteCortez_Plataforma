@@ -1,12 +1,8 @@
 from django import forms
 from django.utils import timezone
 
-from catalogo.models import VARIANTES, Insumo, Servicio
-from clientes.models import Cliente
+from core.models import VARIANTES, Cliente, DetalleAtencionServicio, FichaAtencion, Insumo, Servicio, Usuario
 from core.forms import CampoRun, FormEstilo, ModelFormEstilo, col
-from core.models import Usuario
-
-from .models import DetalleAtencionServicio, FichaAtencion
 
 
 class ClienteRunField(CampoRun):

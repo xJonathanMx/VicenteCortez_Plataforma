@@ -38,7 +38,7 @@ def descifrar(texto):
 
 
 def configuracion():
-    from seguimiento.models import ConfiguracionCorreo
+    from core.models import ConfiguracionCorreo
     try:
         return ConfiguracionCorreo.actual()
     except Exception:  # base de datos aún sin migrar

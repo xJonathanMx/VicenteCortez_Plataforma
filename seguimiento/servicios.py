@@ -19,7 +19,7 @@ from django.core.validators import validate_email
 from django.db import transaction
 from django.utils import timezone
 
-from .models import CanalComunicacion, EnvioMensaje, Plantilla, Recordatorio, Valoracion
+from core.models import CanalComunicacion, EnvioMensaje, Plantilla, Recordatorio, Valoracion
 
 log = logging.getLogger("seguimiento")
 
@@ -85,7 +85,7 @@ def programar_seguimiento(ficha):
 
 def programar_avisos_giftcards(hoy=None):
     """RF-GC-16: avisa una vez cuando la giftcard está próxima a vencer."""
-    from beneficios.models import Giftcard
+    from core.models import Giftcard
 
     hoy = hoy or timezone.localdate()
     limite = hoy + timedelta(days=settings.AVISO_VENCIMIENTO_DIAS)
@@ -248,7 +248,7 @@ def enviar_recordatorio(r):
 
 def procesar_pendientes(hoy=None):
     """Una pasada completa del motor. Devuelve un resumen."""
-    from beneficios.models import ClientePromocion, Giftcard
+    from core.models import ClientePromocion, Giftcard
 
     hoy = hoy or timezone.localdate()
     resumen = {"valoraciones": 0, "recordatorios": 0, "fallidos": 0, "sin_respuesta": 0, "avisos_giftcard": 0}

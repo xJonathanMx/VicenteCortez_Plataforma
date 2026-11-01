@@ -2,9 +2,8 @@ from django import forms
 from django.contrib.auth import password_validation
 from django.contrib.auth.forms import AuthenticationForm
 
-from catalogo.models import Servicio
+from .models import Especialidad, Privilegio, Rol, Servicio, TipoContrato, Usuario
 from . import rut as rututil
-from .models import Especialidad, Privilegio, Rol, TipoContrato, Usuario
 
 
 class Estilo:

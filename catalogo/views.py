@@ -5,12 +5,13 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
-from core.models import TipoEstado
+from core.models import (
+    VARIANTES, Comision, HistoricoComisionServicio, HistoricoEstadoServicio, HistoricoPrecioServicio, Insumo,
+    Servicio, TipoEstado, TipoServicio,
+)
 from core.permisos import privilegio_requerido
 
 from .forms import CAMPOS_PRECIO, EstadoForm, InsumoForm, ServicioForm, TipoServicioForm
-from .models import (VARIANTES, Comision, HistoricoComisionServicio, HistoricoEstadoServicio,
-                     HistoricoPrecioServicio, Insumo, Servicio, TipoServicio)
 
 VARIANTE_DE_CAMPO = dict(zip(CAMPOS_PRECIO, [v for v, _ in VARIANTES]))
 

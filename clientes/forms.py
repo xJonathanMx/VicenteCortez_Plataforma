@@ -4,9 +4,7 @@ from django.urls import reverse
 from django.utils.html import format_html
 
 from core.forms import CampoRun, ModelFormEstilo, col
-from core.models import Usuario
-
-from .models import Cliente
+from core.models import Cliente, Usuario
 
 
 def peluqueros_activos():

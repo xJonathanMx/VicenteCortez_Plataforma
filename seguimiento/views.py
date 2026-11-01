@@ -11,11 +11,10 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from core.forms import FormEstilo, ModelFormEstilo
-from core.models import Usuario
+from core.models import CanalComunicacion, ConfiguracionCorreo, Plantilla, Recordatorio, Usuario, Valoracion
 from core.permisos import privilegio_requerido
 
 from . import servicios as ss
-from .models import CanalComunicacion, ConfiguracionCorreo, Plantilla, Recordatorio, Valoracion
 
 
 class FiltroValoracionesForm(FormEstilo):

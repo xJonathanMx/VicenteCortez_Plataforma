@@ -12,11 +12,10 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from core.forms import FormEstilo
-from core.models import Usuario
+from core.models import IncentivoMeta, MetaMensual, NivelIncentivo, Usuario
 from core.permisos import privilegio_requerido
 
 from . import servicios as ms
-from .models import IncentivoMeta, MetaMensual, NivelIncentivo
 
 
 class PeriodoForm(FormEstilo):

@@ -22,9 +22,8 @@ def documentar_columnas():
     comentario de la columna en la base de datos (COMMENT ON COLUMN en Postgres).
     Así el diccionario de datos vive también dentro de Supabase.
     """
-    propias = {"core", "clientes", "catalogo", "fichas", "seguimiento", "metas", "beneficios"}
     for modelo in apps.get_models():
-        if modelo._meta.app_label not in propias:
+        if modelo._meta.app_label != "core":
             continue
         if not modelo._meta.db_table_comment:
             doc = (modelo.__doc__ or "").strip()

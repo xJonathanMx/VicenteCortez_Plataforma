@@ -213,9 +213,14 @@ python manage.py test
 
 ## Organización del código
 
-Cada carpeta es una app de Django que agrupa uno o más módulos de requerimientos:
+Toda la base de datos y todas las direcciones están centralizadas:
 
-| App           | Módulos de requerimientos                                                                              |
+- **`core/models.py`**: TODOS los modelos (tablas) del sistema en un solo archivo, ordenados por secciones (usuarios, clientes, catálogo, fichas, seguimiento, metas y beneficios). Hay una sola app de Django (`core`) y una sola migración inicial.
+- **`config/urls.py`**: TODAS las URLs en un solo archivo, separadas por sección. Cada sección conserva su *namespace* (`fichas:detalle`, `clientes:buscar`...).
+
+El resto de las carpetas agrupan la lógica de cada módulo de requerimientos:
+
+| Carpeta       | Módulos de requerimientos                                                                              |
 | ------------- | ------------------------------------------------------------------------------------------------------ |
 | `core`        | Autenticación (RF-AS), usuarios, roles y privilegios (RF-URP), panel de administración (RF-PA)         |
 | `clientes`    | Clientes (RF-C)                                                                                        |
@@ -226,7 +231,7 @@ Cada carpeta es una app de Django que agrupa uno o más módulos de requerimient
 | `beneficios`  | Giftcards (RF-GC), promociones (RF-PR)                                                                 |
 | `reportes`    | Reportería (RF-RP)                                                                                     |
 
-Dentro de cada app: `models.py` (tablas), `forms.py` (formularios y validaciones), `views.py` (pantallas), `urls.py` (direcciones) y, en algunas, `servicios.py` (reglas de negocio). Las pantallas están en `templates/<app>/` y el estilo en `static/css/app.css`.
+Dentro de cada carpeta: `forms.py` (formularios y validaciones), `views.py` (pantallas) y, en algunas, `servicios.py` (reglas de negocio). Las pantallas están en `templates/<app>/` y el estilo en `static/css/app.css`.
 
 ## Reglas de negocio a confirmar con la peluquería
 

@@ -43,6 +43,77 @@ class RutTests(TestCase):
         self.assertEqual(rut.formatear("12345678"), "12.345.678-5")
 
 
+class RolesBaseTests(TestCase):
+    def test_la_migracion_crea_los_roles(self):
+        from .models import Rol
+        roles = {r.codigo: r.privilegios.count() for r in Rol.objects.all()}
+        self.assertEqual(roles, {"administrador": 16, "recepcion": 4, "peluquero": 1})
+
+    def test_la_migracion_crea_a_vicente_y_violeta(self):
+        for run, nombre in [("1111111", "Vicente"), ("2222222", "Violeta")]:
+            u = Usuario.objects.get(run=run)
+            self.assertEqual(u.nombre, nombre)
+            self.assertTrue(u.is_superuser and u.es_admin)
+            self.assertFalse(u.has_usable_password())
+            self.assertEqual(u.contrato.nombre, "Interno")
+            self.assertFalse(u.cobra_comision)
+
+    def test_superusuario_queda_como_administrador(self):
+        u = Usuario.objects.create_superuser("12.345.678-5", "x", nombre="Ana", ap_paterno="Rojas",
+                                             correo="ana@correo.cl", telefono="912345678", genero="F")
+        self.assertIn("administrador", u.codigos_roles())
+
+
+class CartaTests(TestCase):
+    def precio(self, nombre):
+        return Servicio.objects.get(nombre=nombre).precio
+
+    def test_la_migracion_carga_la_carta(self):
+        self.assertEqual(self.precio("Corte tradicional"), 25990)
+        self.assertEqual(self.precio("Coffee Premium"), 85000)
+        self.assertEqual(self.precio("Real Coffee / Diamond Coffee Colágeno"), 55000)
+        self.assertEqual(self.precio("Blue Diamond"), 45990)
+        self.assertEqual(self.precio("Novias (Pack Privado)"), 250000)
+        self.assertEqual(Servicio.objects.get(nombre="Novias (Pack Salón)").tipo.nombre, "Novias")
+
+    def test_todos_los_servicios_de_los_documentos_tienen_descripcion_completa(self):
+        import importlib
+        desc = importlib.import_module("core.migrations.0006_descripciones_servicios").DESCRIPCIONES
+        for nombre, texto in desc.items():
+            self.assertEqual(Servicio.objects.get(nombre=nombre).descripcion, texto, nombre)
+
+    def test_en_bd_existente_renombra_y_deja_historial(self):
+        import importlib
+        from django.apps import apps
+        carta = importlib.import_module("core.migrations.0005_catalogo_carta")
+        Servicio.objects.filter(nombre="Corte tradicional").update(precio=25000)
+        Servicio.objects.filter(nombre="Real Coffee / Diamond Coffee Colágeno").update(nombre="Coffee Premium Colágeno")
+        carta.cargar_carta(apps, None)
+        s = Servicio.objects.get(nombre="Corte tradicional")
+        self.assertEqual(s.precio, 25990)
+        self.assertEqual(s.historial_precios.get().precio_anterior, 25000)
+        self.assertFalse(Servicio.objects.filter(nombre="Coffee Premium Colágeno").exists())
+        self.assertTrue(Servicio.objects.filter(nombre="Real Coffee / Diamond Coffee Colágeno").exists())
+
+
+class CreateSuperuserTests(TestCase):
+    datos = dict(nombre="Ana", ap_paterno="Rojas", correo="ana@correo.cl", telefono="912345678", genero="F")
+
+    def test_acepta_run_de_8_digitos(self):
+        call_command("createsuperuser", interactive=False, run="12.345.678-5", stdout=io.StringIO(), **self.datos)
+        u = Usuario.objects.get(run="12345678")
+        self.assertEqual(u.dv, "5")
+        self.assertTrue(u.is_superuser)
+
+    def test_rechaza_run_invalido_o_repetido(self):
+        from django.core.management.base import CommandError
+        with self.assertRaises(CommandError):
+            call_command("createsuperuser", interactive=False, run="12.345.678-9", stdout=io.StringIO(), **self.datos)
+        call_command("createsuperuser", interactive=False, run="12345678-5", stdout=io.StringIO(), **self.datos)
+        with self.assertRaises(CommandError):
+            call_command("createsuperuser", interactive=False, run="12.345.678-5", stdout=io.StringIO(), **self.datos)
+
+
 class AccesoTests(Base):
     def test_login_con_run_formateado(self):
         r = self.client.post(reverse("login"), {"username": "11.111.111-1", "password": CLAVE})
@@ -101,6 +172,19 @@ class PantallasTests(Base):
             for fmt in ("xlsx", "pdf"):
                 r = self.client.get(reverse("reportes:reporte", args=[k]) + f"?formato={fmt}")
                 self.assertEqual(r.status_code, 200, f"{k} {fmt}")
+
+    def test_peluquero_abre_ficha_e_inicia_servicio(self):
+        self.entrar(self.pelu)
+        r = self.client.post(reverse("fichas:nueva"), {"nombre_provisorio": "Cliente de paso"})
+        ficha = FichaAtencion.objects.latest("pk")
+        self.assertRedirects(r, reverse("fichas:detalle", args=[ficha.pk]))
+        servicio = Servicio.objects.filter(habilitados__usuario=self.pelu, habilitados__activo=True).first()
+        self.client.post(reverse("fichas:agregar_servicio", args=[ficha.pk]), {
+            "servicio": servicio.pk, "variante": "basico", "peluquero": self.pelu.pk, "sesiones_totales": 1})
+        d = DetalleAtencionServicio.objects.get(ficha=ficha)
+        self.client.post(reverse("fichas:iniciar", args=[d.pk]), {"confirmar": "1"})
+        d.refresh_from_db()
+        self.assertEqual(d.estado, "en_proceso")
 
     def test_peluquero_ve_su_inicio(self):
         self.entrar(self.pelu)

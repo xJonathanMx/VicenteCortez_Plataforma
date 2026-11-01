@@ -170,8 +170,11 @@ Sin `DATABASE_URL` usa SQLite. Usuarios demo (clave `Peluqueria2026`):
 | Peluquero externo | 17.777.777-3 |
 | Peluquera interna | 18.888.888-7 |
 
-Sin `--demo` solo se cargan roles, privilegios, estados, canales, plantillas y el catálogo base.
-Para crear el primer administrador real: `python manage.py createsuperuser` (pide RUN con DV).
+`migrate` ya deja creados, sin correr nada más: los roles y privilegios base, los administradores
+Vicente y Violeta (sin contraseña: `python manage.py changepassword <RUN sin DV>`), los tipos de
+contrato Interno/Externo y la carta de servicios con sus precios (migraciones `core/0002` a `0005`).
+Sin `--demo`, `cargar_datos_iniciales` solo agrega estados, niveles, canales, plantillas e insumos.
+Para crear otro administrador: `python manage.py createsuperuser` (pide el RUN completo, con DV).
 
 Después de un `git pull` con cambios, ejecuta `pip install -r requirements.txt` y `python manage.py migrate`.
 
@@ -215,7 +218,7 @@ python manage.py test
 
 Toda la base de datos y todas las direcciones están centralizadas:
 
-- **`core/models.py`**: TODOS los modelos (tablas) del sistema en un solo archivo, ordenados por secciones (usuarios, clientes, catálogo, fichas, seguimiento, metas y beneficios). Hay una sola app de Django (`core`) y una sola migración inicial.
+- **`core/models.py`**: TODOS los modelos (tablas) del sistema en un solo archivo, ordenados por secciones (usuarios, clientes, catálogo, fichas, seguimiento, metas y beneficios). Hay una sola app de Django (`core`): la migración `0001_initial` crea las tablas y las siguientes solo cargan datos base.
 - **`config/urls.py`**: TODAS las URLs en un solo archivo, separadas por sección. Cada sección conserva su *namespace* (`fichas:detalle`, `clientes:buscar`...).
 
 El resto de las carpetas agrupan la lógica de cada módulo de requerimientos:

@@ -24,6 +24,11 @@ ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "localhost,127.0.
 CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()]
 
 INSTALLED_APPS = [
+    # Una sola app con TODOS los modelos (core/models.py) y una sola migración.
+    # Las carpetas clientes/, catalogo/, fichas/, seguimiento/, metas/, beneficios/
+    # y reportes/ quedan solo con vistas, formularios y servicios (no son apps).
+    # core va primero para que su createsuperuser reemplace al de Django.
+    "core",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -31,10 +36,6 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.humanize",
-    # Una sola app con TODOS los modelos (core/models.py) y una sola migración.
-    # Las carpetas clientes/, catalogo/, fichas/, seguimiento/, metas/, beneficios/
-    # y reportes/ quedan solo con vistas, formularios y servicios (no son apps).
-    "core",
 ]
 
 MIDDLEWARE = [

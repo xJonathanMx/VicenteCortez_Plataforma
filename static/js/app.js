@@ -220,7 +220,27 @@
     });
   }
 
+  // Desplegables que en PC quedan siempre abiertos y en celular se abren al tocarlos
+  function desplegablesMovil() {
+    var pc = matchMedia("(min-width: 768px)");
+    document.querySelectorAll("details.desplegable-movil").forEach(function (d) {
+      function ajustar() { if (pc.matches) d.open = true; }
+      d.querySelector("summary").addEventListener("click", function (e) { if (pc.matches) e.preventDefault(); });
+      pc.addEventListener("change", ajustar);
+      ajustar();
+    });
+  }
+
+  // Encabezado fijo: agrega sombra solo cuando ya quedó pegado arriba al bajar
+  function encabezadoFijo() {
+    var e = document.querySelector(".encabezado-fijo");
+    if (!e) return;
+    function revisar() { e.classList.toggle("pegado", window.scrollY > 0 && e.getBoundingClientRect().top <= 0); }
+    window.addEventListener("scroll", revisar, { passive: true });
+    revisar();
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
-    iconos(); tema(); guardables(); incentivos(); menu(); cronometros(); confirmaciones(); unEnvio(); sugerencias();
+    iconos(); tema(); guardables(); incentivos(); menu(); cronometros(); confirmaciones(); unEnvio(); sugerencias(); encabezadoFijo(); desplegablesMovil();
   });
 })();

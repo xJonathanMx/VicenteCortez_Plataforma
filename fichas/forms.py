@@ -45,7 +45,13 @@ class AgregarServicioForm(FormEstilo):
 
     def __init__(self, *args, ficha=None, usuario=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["servicio"].queryset = Servicio.objects.filter(activo=True, tipo__activo=True).select_related("tipo")
+        servicios = Servicio.objects.filter(activo=True, tipo__activo=True).select_related("tipo")
+        self.fields["servicio"].queryset = servicios
+        # Agrupados por tipo: la opción muestra solo el nombre y no se corta en el celular
+        grupos = {}
+        for s in servicios.order_by("tipo__nombre", "nombre"):
+            grupos.setdefault(s.tipo.nombre, []).append((s.pk, s.nombre))
+        self.fields["servicio"].choices = [("", "Elige un servicio")] + list(grupos.items())
         pelus = Usuario.objects.filter(is_active=True, roles__codigo="peluquero").distinct()
         if usuario and not usuario.tiene_privilegio("asignar_peluquero"):
             pelus = pelus.filter(pk=usuario.pk)  # sin privilegio, solo se asigna a sí mismo

@@ -122,6 +122,14 @@ a { color: var(--tinta); }
 .encabezado { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px; margin-bottom: 22px; }
 .encabezado h1 { margin: 0; }
 .encabezado p { margin: 4px 0 0; color: var(--apagado); }
+/* Encabezado que queda fijo arriba al bajar (ej. el número de la ficha) */
+.encabezado-fijo { position: sticky; top: 0; z-index: 20; background: var(--bg); padding: 10px 0; margin-top: -10px; }
+.encabezado-fijo.pegado { box-shadow: 0 10px 14px -12px var(--sombra-acento, rgba(0,0,0,.25)); }
+@media (max-width: 575.98px) {
+  .encabezado-fijo { flex-wrap: nowrap; align-items: center; }
+  .encabezado-fijo h1 { font-size: 1.35rem; }
+  .encabezado-fijo p { font-size: .8rem; }
+}
 
 .btn.boton-menu { display: none; } /* solo en celular/tablet; ver media query */
 
@@ -212,6 +220,8 @@ a { color: var(--tinta); }
   background-color: var(--bg); border: 0; border-radius: var(--radio-s); box-shadow: var(--hundido-s);
   padding: 11px 14px; color: var(--tinta); font-size: 16px; /* 16px evita el zoom en iOS */
 }
+/* Deja espacio a la flecha y corta con "…" los textos largos en vez de pasar por debajo */
+.form-select { padding-right: 40px; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
 .form-control:focus, .form-select:focus { background-color: var(--bg); box-shadow: var(--hundido-s), 0 0 0 2px var(--tinta); color: var(--tinta); }
 .form-control::placeholder { color: var(--placeholder); }
 .form-text { color: var(--apagado); font-size: .8rem; }
@@ -402,6 +412,15 @@ a { color: var(--tinta); }
 .elegible-nota { font-size: .8rem; color: var(--alerta); }
 .elegible.no-disponible { opacity: .6; cursor: not-allowed; box-shadow: var(--hundido-s); }
 
+.desplegable > summary { display: flex; align-items: center; gap: 10px; cursor: pointer; list-style: none; }
+.desplegable > summary::-webkit-details-marker { display: none; }
+.desplegable > summary .flecha { width: 20px; height: 20px; color: var(--apagado); transition: transform .2s; }
+.desplegable[open] > summary .flecha { transform: rotate(180deg); }
+/* desplegable-movil: en PC queda siempre abierto; solo en celular se abre y cierra */
+@media (min-width: 768px) {
+  .desplegable-movil > summary { cursor: default; }
+  .desplegable-movil > summary .flecha { display: none; }
+}
 .resumen-pago { border-radius: var(--radio-m); box-shadow: var(--hundido); padding: 14px 18px; max-width: 420px; }
 .resumen-pago > div { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; font-size: .92rem; }
 .resumen-pago .total { border-top: 1px solid var(--linea); margin-top: 6px; padding-top: 8px; font-weight: 700; color: var(--tinta); }

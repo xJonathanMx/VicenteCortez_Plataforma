@@ -108,21 +108,22 @@ def detalle(request, pk):
             d.tiempo_form = _tiempo_form(d)
     if ctx["puede_editar"]:
         ctx["agregar_form"] = AgregarServicioForm(ficha=ficha, usuario=u)
+    # Total por pagar: se ve siempre, junto al diagnóstico
+    usos_gc = list(ficha.usos_giftcard.select_related("giftcard", "registrado_por"))
+    usos_pr = list(ficha.usos_promocion.select_related("cliente_promocion__promocion", "servicio", "detalle",
+                                                        "registrado_por"))
+    pagado_gc = sum(x.monto_usado for x in usos_gc)
+    cubierto_pr = sum(x.detalle.precio_cobrado for x in usos_pr if x.detalle_id)
+    ctx.update({"usos_gc": usos_gc, "usos_pr": usos_pr, "pagado_gc": pagado_gc, "cubierto_pr": cubierto_pr,
+                "por_pagar": max(ficha.total - pagado_gc - cubierto_pr, 0)})
     if u.tiene_privilegio("gestionar_beneficios") and ficha.cliente_id and ficha.estado_id != "anulada":
         from beneficios.forms import UsoGiftcardForm, UsoPromocionForm
-        usos_gc = list(ficha.usos_giftcard.select_related("giftcard", "registrado_por"))
-        usos_pr = list(ficha.usos_promocion.select_related("cliente_promocion__promocion", "servicio", "detalle",
-                                                            "registrado_por"))
-        pagado_gc = sum(u.monto_usado for u in usos_gc)
-        cubierto_pr = sum(u.detalle.precio_cobrado for u in usos_pr if u.detalle_id)
-        por_pagar = max(ficha.total - pagado_gc - cubierto_pr, 0)
         gc_form = UsoGiftcardForm(cliente=ficha.cliente)
-        ctx.update({
-            "uso_gc_form": gc_form, "giftcards": list(gc_form.fields["giftcard"].queryset),
-            "uso_pr_form": UsoPromocionForm(cliente=ficha.cliente, ficha=ficha),
-            "usos_gc": usos_gc, "usos_pr": usos_pr, "pagado_gc": pagado_gc, "cubierto_pr": cubierto_pr,
-            "por_pagar": por_pagar,
-        })
+        pr_form = UsoPromocionForm(cliente=ficha.cliente, ficha=ficha)
+        giftcards = list(gc_form.fields["giftcard"].queryset)
+        # La sección aparece solo si el cliente tiene algo que usar o ya se aplicó algo
+        if giftcards or pr_form.opciones or usos_gc or usos_pr:
+            ctx.update({"uso_gc_form": gc_form, "giftcards": giftcards, "uso_pr_form": pr_form})
     return render(request, "fichas/detalle.html", ctx)
 
 

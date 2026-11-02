@@ -3,7 +3,7 @@
 {% block contenido %}
 {% puede "validar_fichas" as admin_fichas %}
 {% puede "cerrar_servicios" as cierra_otros %}
-<div class="encabezado">
+<div class="encabezado encabezado-fijo">
   <div>
     <h1>Ficha N° {{ f.pk }} <span class="estado {{ f.estado_id|clase_estado }} align-middle">{{ f.estado }}</span></h1>
     <p>Abierta por {{ f.abierta_por.nombre_corto }} el {{ f.fecha_hora_inicio|date:"d-m-Y \a \l\a\s H:i" }}{% if f.fecha_hora_termino %}; terminó a las {{ f.fecha_hora_termino|date:"H:i" }}{% endif %}{% if f.validada_por %}; validada por {{ f.validada_por.nombre_corto }}{% endif %}</p>
@@ -13,7 +13,7 @@
 
 {% if f.estado_id == "anulada" %}<div class="aviso error"><i data-lucide="ban"></i><div>Ficha anulada: {{ f.motivo_anulacion }}</div></div>{% endif %}
 
-<div class="rejilla rejilla-2 mb-4">
+<div class="rejilla rejilla-2 mb-4 align-items-start">
   <section class="tarjeta">
     <h2 class="mb-3">Cliente</h2>
     {% if f.cliente %}
@@ -31,24 +31,41 @@
       </form>
       <a class="small" href="{% url 'clientes:nuevo' %}">Registrar al cliente</a>
     {% endif %}
+    <h3 class="mt-4 mb-2">Por pagar</h3>
+    <div class="resumen-pago">
+      <div><span>Total de la atención</span><strong class="tabular">{{ f.total|pesos }}</strong></div>
+      {% if pagado_gc %}<div><span>Pagado con giftcard</span><strong class="tabular">− {{ pagado_gc|pesos }}</strong></div>{% endif %}
+      {% if cubierto_pr %}<div><span>Cubierto por promoción</span><strong class="tabular">− {{ cubierto_pr|pesos }}</strong></div>{% endif %}
+      <div class="total"><span>Queda por pagar</span><strong class="tabular">{{ por_pagar|pesos }}</strong></div>
+    </div>
   </section>
 
   <section class="tarjeta" id="diagnostico">
-    <h2 class="mb-3">Diagnóstico inicial</h2>
-    {% if puede_editar %}
-      <form method="post" action="{% url 'fichas:notas' f.pk %}" data-guardable>{% csrf_token %}
-        <div class="row g-3">{% campo notas_form.diagnostico %}{% campo notas_form.observaciones %}</div>
-        <div class="d-flex align-items-center gap-2 flex-wrap mt-3">
-          <button class="btn btn-relieve btn-sm">Guardar diagnóstico</button>
-          <span class="estado ok d-none" data-guardado data-clave="diagnostico">Guardado</span>
-          <span class="estado alerta d-none" data-sin-guardar>Cambios sin guardar</span>
-        </div>
-        {% if f.modificado_por %}<p class="form-text mb-0 mt-2">Última edición: {{ f.modificado_en|date:"d-m-Y H:i" }} por {{ f.modificado_por.nombre_corto }}</p>{% endif %}
-      </form>
-    {% else %}
-      <p class="mb-2">{{ f.diagnostico|default:"Sin diagnóstico registrado."|linebreaksbr }}</p>
-      {% if f.observaciones %}<p class="small text-apagado mb-0">{{ f.observaciones|linebreaksbr }}</p>{% endif %}
-    {% endif %}
+    <details class="desplegable desplegable-movil" {% if request.GET.guardado == "diagnostico" %}open{% endif %}>
+      <summary>
+        <h2 class="m-0">Diagnóstico inicial</h2>
+        <span class="estado{% if f.diagnostico or f.observaciones %} ok{% endif %} ms-auto">{% if f.diagnostico or f.observaciones %}Registrado{% else %}Sin registrar{% endif %}</span>
+        <i data-lucide="chevron-down" class="flecha"></i>
+      </summary>
+      <div class="mt-3">
+      {% if puede_editar %}
+        <form method="post" action="{% url 'fichas:notas' f.pk %}" data-guardable>{% csrf_token %}
+          <div class="row g-3">{% campo notas_form.diagnostico %}{% campo notas_form.observaciones %}</div>
+          <div class="d-flex align-items-center gap-2 flex-wrap mt-3">
+            <button class="btn btn-relieve btn-sm">Guardar diagnóstico</button>
+            <span class="estado ok d-none" data-guardado data-clave="diagnostico">Guardado</span>
+            <span class="estado alerta d-none" data-sin-guardar>Cambios sin guardar</span>
+          </div>
+          {% if f.modificado_por %}<p class="form-text mb-0 mt-2">Última edición: {{ f.modificado_en|date:"d-m-Y H:i" }} por {{ f.modificado_por.nombre_corto }}</p>{% endif %}
+        </form>
+      {% else %}
+        <p class="mb-2">{{ f.diagnostico|default:"Sin diagnóstico registrado."|linebreaksbr }}</p>
+        {% if f.observaciones %}<p class="small text-apagado mb-0">{{ f.observaciones|linebreaksbr }}</p>{% endif %}
+      {% endif %}
+      </div>
+    </details>
+    <script>if (matchMedia("(min-width: 768px)").matches) document.currentScript.previousElementSibling.open = true;</script>
+
   </section>
 </div>
 
@@ -203,14 +220,7 @@
 {% if uso_gc_form %}
 <section class="tarjeta mb-4" id="beneficios">
   <h2 class="mb-1">Giftcards y promociones</h2>
-  <p class="small text-apagado">Registro informativo de cómo se pagó parte de esta atención. No se procesan pagos.</p>
-
-  <div class="resumen-pago mb-4">
-    <div><span>Total de la atención</span><strong class="tabular">{{ f.total|pesos }}</strong></div>
-    {% if pagado_gc %}<div><span>Pagado con giftcard</span><strong class="tabular">− {{ pagado_gc|pesos }}</strong></div>{% endif %}
-    {% if cubierto_pr %}<div><span>Cubierto por promoción</span><strong class="tabular">− {{ cubierto_pr|pesos }}</strong></div>{% endif %}
-    <div class="total"><span>Queda por pagar</span><strong class="tabular">{{ por_pagar|pesos }}</strong></div>
-  </div>
+  <p class="small text-apagado">Registro informativo de cómo se pagó parte de esta atención. No se procesan pagos. El descuento se refleja en «Por pagar».</p>
 
   {% if usos_gc or usos_pr %}
     <h3 class="mb-2">Aplicado en esta atención</h3>

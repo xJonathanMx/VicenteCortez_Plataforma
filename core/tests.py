@@ -346,6 +346,22 @@ class GiftcardTests(Base):
         g.refresh_from_db()
         self.assertEqual((g.saldo_actual, g.estado), (0, "agotada"))
 
+    def test_ficha_muestra_por_pagar_y_giftcards_solo_si_hay(self):
+        self.entrar(self.admin)
+        ficha = fs.abrir_ficha(self.admin, self.cliente)
+        fs.agregar_servicio(ficha, Servicio.objects.get(nombre="Corte tradicional"), self.pelu, "basico", self.admin)
+        url = reverse("fichas:detalle", args=[ficha.pk])
+        r = self.client.get(url)
+        self.assertContains(r, "Queda por pagar")
+        self.assertNotContains(r, 'id="beneficios"')  # el cliente no tiene nada que usar
+        g = Giftcard.objects.create(beneficiario=self.cliente, monto_inicial=10000, saldo_actual=10000,
+                                    fecha_vencimiento=timezone.localdate() + timedelta(days=30), creada_por=self.admin)
+        self.assertContains(self.client.get(url), 'id="beneficios"')
+        usar_giftcard(g, ficha, 10000, self.admin)
+        r = self.client.get(url)
+        self.assertContains(r, "Pagado con giftcard")
+        self.assertEqual(r.context["por_pagar"], 25990 - 10000)
+
     def test_vencida(self):
         g = Giftcard.objects.create(beneficiario=self.cliente, monto_inicial=10000, saldo_actual=10000,
                                     fecha_vencimiento=timezone.localdate() - timedelta(days=1), creada_por=self.admin)

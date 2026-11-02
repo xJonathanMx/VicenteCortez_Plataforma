@@ -3,6 +3,8 @@ Reglas de negocio de las fichas de atención y la ejecución de servicios.
 Las vistas solo llaman a estas funciones; así las reglas se cumplen igual
 desde cualquier pantalla.
 """
+from datetime import timedelta
+
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.forms.models import model_to_dict
@@ -121,27 +123,42 @@ def iniciar_servicio(detalle, usuario):
 
 
 @transaction.atomic
-def terminar_servicio(detalle, usuario, hora_termino=None, motivo=""):
-    """RF-ES-02 / RF-ES-03 / RF-ES-05 (cierre manual con hora y motivo)."""
-    manual = hora_termino is not None
-    if manual:
-        if not usuario.tiene_privilegio("cerrar_servicios"):
-            raise PermissionDenied("Solo la administración puede cerrar servicios manualmente.")
-        if not motivo.strip():
-            raise ValidationError("Indica el motivo del cierre manual.")
-    else:
-        _puede_operar(detalle, usuario)
+def terminar_servicio(detalle, usuario):
+    """RF-ES-02 / RF-ES-03."""
+    _puede_operar(detalle, usuario)
     if detalle.estado != "en_proceso":
         raise ValidationError("Solo se puede terminar un servicio que está en proceso.")
-    termino = hora_termino or timezone.now()
-    if termino < detalle.hora_inicio:
-        raise ValidationError("La hora de término no puede ser anterior al inicio.")
     detalle.estado = "terminado"
-    detalle.hora_termino = termino
-    detalle.cierre_manual = manual
-    detalle.motivo_cierre = motivo
+    detalle.hora_termino = timezone.now()
     detalle.modificado_por = usuario
     detalle.save()
+
+
+@transaction.atomic
+def registrar_tiempo_manual(detalle, usuario, hora_inicio, minutos, motivo):
+    """RF-ES-05: registra a mano el inicio y la duración cuando no se pudo marcar en vivo
+    (ej. se cortó la luz). Sirve para servicios pendientes o en proceso y los deja terminados.
+    Queda marcado como manual, con el motivo y quién lo registró."""
+    _puede_operar(detalle, usuario)
+    if not detalle.ficha.editable:
+        raise ValidationError("La ficha está cerrada.")
+    if detalle.estado not in ("pendiente", "en_proceso"):
+        raise ValidationError("Este servicio ya está terminado.")
+    if not motivo.strip():
+        raise ValidationError("Indica el motivo del registro manual.")
+    if minutos < 1:
+        raise ValidationError("Indica cuánto duró el servicio.")
+    termino = hora_inicio + timedelta(minutes=minutos)
+    if termino > timezone.now():
+        raise ValidationError("Según esa hora y duración, el servicio todavía no termina. Revisa los datos.")
+    detalle.estado = "terminado"
+    detalle.hora_inicio = hora_inicio
+    detalle.hora_termino = termino
+    detalle.cierre_manual = True
+    detalle.motivo_cierre = f"{motivo.strip()} (registrado por {usuario.nombre_corto})"
+    detalle.modificado_por = usuario
+    detalle.save()
+    cambiar_estado(detalle.ficha, "en_atencion", usuario, f"Registro manual de {detalle.servicio.nombre}")
 
 
 @transaction.atomic

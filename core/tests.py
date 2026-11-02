@@ -6,7 +6,7 @@ import io
 import logging
 from datetime import timedelta
 
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
@@ -141,6 +141,46 @@ class AccesoTests(Base):
         self.pelu.save()
         r = self.client.post(reverse("login"), {"username": rut.formatear("16666666"), "password": CLAVE})
         self.assertContains(r, "RUN o contraseña incorrectos.")
+
+
+class TiempoManualTests(Base):
+    def nuevo_servicio(self):
+        ficha = fs.abrir_ficha(self.pelu, self.cliente)
+        return fs.agregar_servicio(ficha, Servicio.objects.get(nombre="Corte tradicional"), self.pelu, "basico", self.pelu)
+
+    def test_peluquero_registra_a_mano_un_servicio_pendiente(self):
+        d = self.nuevo_servicio()
+        self.entrar(self.pelu)
+        inicio = timezone.localtime() - timedelta(hours=3)
+        p = f"t{d.pk}-"
+        self.client.post(reverse("fichas:tiempo_manual", args=[d.pk]), {
+            p + "hora_inicio": inicio.strftime("%Y-%m-%dT%H:%M"), p + "horas": 1, p + "minutos": 30,
+            p + "motivo": "Se cortó la luz"})
+        d.refresh_from_db()
+        self.assertEqual((d.estado, d.duracion_min, d.cierre_manual), ("terminado", 90, True))
+        self.assertIn("Se cortó la luz", d.motivo_cierre)
+        self.assertIn(self.pelu.nombre_corto, d.motivo_cierre)
+        self.assertEqual(d.ficha.estado_id, "en_atencion")
+
+    def test_sirve_para_un_servicio_en_proceso(self):
+        d = self.nuevo_servicio()
+        fs.iniciar_servicio(d, self.pelu)
+        fs.registrar_tiempo_manual(d, self.admin, d.hora_inicio - timedelta(hours=2), 120, "Olvidó terminarlo")
+        self.assertEqual((d.estado, d.duracion_min), ("terminado", 120))
+
+    def test_reglas(self):
+        d = self.nuevo_servicio()
+        hace_3h = timezone.now() - timedelta(hours=3)
+        otro = Usuario.objects.get(run="17777777")
+        with self.assertRaises(PermissionDenied):  # otro peluquero sin privilegio
+            fs.registrar_tiempo_manual(d, otro, hace_3h, 60, "Luz")
+        with self.assertRaises(ValidationError):  # sin motivo
+            fs.registrar_tiempo_manual(d, self.pelu, hace_3h, 60, "  ")
+        with self.assertRaises(ValidationError):  # terminaría en el futuro
+            fs.registrar_tiempo_manual(d, self.pelu, hace_3h, 240, "Luz")
+        fs.registrar_tiempo_manual(d, self.pelu, hace_3h, 60, "Luz")
+        with self.assertRaises(ValidationError):  # ya está terminado
+            fs.registrar_tiempo_manual(d, self.pelu, hace_3h, 60, "Luz")
 
 
 class PantallasTests(Base):

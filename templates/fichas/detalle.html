@@ -73,7 +73,7 @@
 
     {% if d.hora_inicio %}
       <div class="small mt-2">Inicio {{ d.hora_inicio|time:"H:i" }}{% if d.hora_termino %}, término {{ d.hora_termino|time:"H:i" }}, duró {{ d.duracion_min|minutos }}{% endif %}
-        (estimado {{ d.servicio.tiempo_estimado|minutos }}){% if d.cierre_manual %}. <span class="text-apagado">Cerrado por administración: {{ d.motivo_cierre }}</span>{% endif %}</div>
+        (estimado {{ d.servicio.tiempo_estimado|minutos }}){% if d.cierre_manual %}. <span class="text-apagado">Tiempo registrado a mano: {{ d.motivo_cierre }}</span>{% endif %}</div>
     {% endif %}
 
     {% if f.editable %}
@@ -93,6 +93,21 @@
           <p class="aviso warning mt-3 mb-0"><i data-lucide="info"></i><span>Solo {{ d.peluquero.nombre_corto }} o administración puede iniciar este servicio, desde su propia cuenta. Así el tiempo queda registrado por quien hace el trabajo.</span></p>
         {% endif %}
       {% endif %}
+      {% if d.tiempo_form and d.peluquero_id == user.pk or d.tiempo_form and cierra_otros %}
+      {% with t=d.tiempo_form %}
+      <details class="mt-3">
+        <summary class="small fw-semibold" style="cursor:pointer">¿No se pudo marcar el tiempo? Regístralo a mano</summary>
+        <p class="small text-apagado mt-2 mb-0">Úsalo si se cortó la luz o se olvidó iniciar o terminar. El servicio queda terminado y marcado como registro manual.</p>
+        <form method="post" action="{% url 'fichas:tiempo_manual' d.pk %}" class="row g-2 mt-1 align-items-end" novalidate>{% csrf_token %}
+          <div class="col-12 col-md-4"><label class="form-label" for="{{ t.hora_inicio.id_for_label }}">{{ t.hora_inicio.label }}</label>{{ t.hora_inicio }}</div>
+          <div class="col-6 col-md-2"><label class="form-label" for="{{ t.horas.id_for_label }}">{{ t.horas.label }}</label>{{ t.horas }}</div>
+          <div class="col-6 col-md-2"><label class="form-label" for="{{ t.minutos.id_for_label }}">{{ t.minutos.label }}</label>{{ t.minutos }}</div>
+          <div class="col-12 col-md-4"><label class="form-label" for="{{ t.motivo.id_for_label }}">{{ t.motivo.label }}</label>{{ t.motivo }}</div>
+          <div class="col-12"><button class="btn btn-relieve">Guardar tiempo</button></div>
+        </form>
+      </details>
+      {% endwith %}
+      {% endif %}
     {% endif %}
 
     <div class="mt-3">
@@ -109,7 +124,7 @@
 
     {% if f.editable %}
     <details class="mt-3">
-      <summary class="small fw-semibold" style="cursor:pointer">Registrar insumos, fórmula{% if cierra_otros and d.estado == 'en_proceso' %} o cierre manual{% endif %}</summary>
+      <summary class="small fw-semibold" style="cursor:pointer">Registrar insumos o fórmula</summary>
       <form method="post" action="{% url 'fichas:agregar_insumo' d.pk %}" class="row g-2 mt-2 align-items-end" novalidate>{% csrf_token %}
         <div class="col-12 col-md-5"><label class="form-label">Insumo</label>{{ insumo_form.insumo }}</div>
         <div class="col-5 col-md-2"><label class="form-label">Cantidad</label>{{ insumo_form.cant_usada }}</div>
@@ -127,13 +142,6 @@
           <span class="estado alerta d-none" data-sin-guardar>Cambios sin guardar</span>
         </div>
       </form>
-      {% if cierra_otros and d.estado == "en_proceso" %}
-      <form method="post" action="{% url 'fichas:cierre_manual' d.pk %}" class="row g-2 mt-3 align-items-end" novalidate>{% csrf_token %}
-        <div class="col-12 col-md-4"><label class="form-label">Hora real de término</label>{{ cierre_form.hora_termino }}</div>
-        <div class="col-12 col-md-5"><label class="form-label">Motivo</label>{{ cierre_form.motivo }}</div>
-        <div class="col-12 col-md-3"><button class="btn btn-peligro w-100">Cerrar manualmente</button></div>
-      </form>
-      {% endif %}
       {% if d.estado == "pendiente" %}
       <form method="post" action="{% url 'fichas:quitar_servicio' d.pk %}" class="mt-3" data-confirmar="¿Quitar {{ d.servicio.nombre }} de la ficha?">{% csrf_token %}
         <button class="btn btn-peligro btn-sm">Quitar servicio</button></form>

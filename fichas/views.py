@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -15,8 +17,8 @@ from core.forms import MotivoForm
 from core.permisos import exigir, privilegio_requerido
 
 from . import servicios as fs
-from .forms import (AgregarServicioForm, CierreManualForm, FichaNotasForm, FiltroFichasForm, InsumoUsadoForm,
-                    NotasServicioForm, NuevaFichaForm, VincularForm)
+from .forms import (AgregarServicioForm, FichaNotasForm, FiltroFichasForm, InsumoUsadoForm, NotasServicioForm,
+                    NuevaFichaForm, TiempoManualForm, VincularForm)
 
 
 def fichas_visibles(usuario):
@@ -100,8 +102,10 @@ def detalle(request, pk):
         "motivo_form": MotivoForm(),
         "vincular_form": VincularForm(),
         "insumo_form": InsumoUsadoForm(),
-        "cierre_form": CierreManualForm(initial={"hora_termino": timezone.localtime().replace(second=0, microsecond=0)}),
     }
+    for d in ctx["servicios"]:
+        if d.estado in ("pendiente", "en_proceso"):
+            d.tiempo_form = _tiempo_form(d)
     if ctx["puede_editar"]:
         ctx["agregar_form"] = AgregarServicioForm(ficha=ficha, usuario=u)
     if u.tiene_privilegio("gestionar_beneficios") and ficha.cliente_id and ficha.estado_id != "anulada":
@@ -165,6 +169,15 @@ def _con_aviso(servicios):
     return servicios
 
 
+def _tiempo_form(d, data=None):
+    """Formulario de registro manual, sugiriendo el inicio real (si se inició) y la duración estimada."""
+    estimado = d.servicio.tiempo_estimado
+    inicio = d.hora_inicio or timezone.now() - timedelta(minutes=estimado)
+    return TiempoManualForm(data, prefix=f"t{d.pk}", initial={
+        "hora_inicio": timezone.localtime(inicio).replace(second=0, microsecond=0),
+        "horas": estimado // 60, "minutos": estimado % 60})
+
+
 def _detalle(request, pk):
     d = get_object_or_404(DetalleAtencionServicio.objects.select_related("ficha", "servicio"), pk=pk)
     ficha_visible(request, d.ficha_id)
@@ -205,21 +218,24 @@ def terminar(request, pk):
     return _volver(request, d)
 
 
-@privilegio_requerido("cerrar_servicios")
+@login_required
 @require_POST
-def cierre_manual(request, pk):
-    """RF-ES-05 / RF-FA-09."""
+def tiempo_manual(request, pk):
+    """RF-ES-05 / RF-FA-09: el peluquero a cargo o administración registra el tiempo a mano."""
     d = _detalle(request, pk)
-    form = CierreManualForm(request.POST)
+    form = _tiempo_form(d, request.POST)
     if form.is_valid():
+        c = form.cleaned_data
         try:
-            fs.terminar_servicio(d, request.user, form.cleaned_data["hora_termino"], form.cleaned_data["motivo"])
-            messages.success(request, "Servicio cerrado manualmente.")
+            fs.registrar_tiempo_manual(d, request.user, c["hora_inicio"], c["duracion"], c["motivo"])
+            messages.success(request, f"{d.servicio.nombre} registrado a mano: duró {c['horas']} h {c['minutos']:02d} min.")
+            if d.ficha.todos_terminados:
+                messages.info(request, "Todos los servicios están terminados: ya puedes cerrar la ficha.")
         except (ValidationError, PermissionDenied) as e:
             _error(request, e)
     else:
-        messages.error(request, "Indica la hora de término y el motivo.")
-    return redirect("fichas:detalle", pk=d.ficha_id)
+        messages.error(request, "Revisa el registro manual: " + "; ".join(e for errs in form.errors.values() for e in errs))
+    return redirect(f"{reverse('fichas:detalle', args=[d.ficha_id])}#s{d.pk}")
 
 
 @login_required

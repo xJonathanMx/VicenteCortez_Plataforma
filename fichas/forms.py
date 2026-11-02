@@ -105,10 +105,24 @@ class FichaNotasForm(ModelFormEstilo):
         fields = ["diagnostico", "observaciones"]
 
 
-class CierreManualForm(FormEstilo):
-    hora_termino = forms.DateTimeField(label="Hora real de término", widget=forms.DateTimeInput(
+class TiempoManualForm(FormEstilo):
+    """Para cuando el tiempo no se pudo marcar en vivo (ej. se cortó la luz)."""
+    hora_inicio = forms.DateTimeField(label="Empezó a las", widget=forms.DateTimeInput(
         attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"), input_formats=["%Y-%m-%dT%H:%M"])
-    motivo = forms.CharField(label="Motivo", max_length=255)
+    horas = forms.IntegerField(label="Duró (horas)", min_value=0, max_value=12, initial=0,
+                               widget=forms.NumberInput(attrs={"inputmode": "numeric"}))
+    minutos = forms.IntegerField(label="y minutos", min_value=0, max_value=59, initial=0,
+                                 widget=forms.NumberInput(attrs={"inputmode": "numeric", "step": 5}))
+    motivo = forms.CharField(label="Motivo", max_length=200,
+                             widget=forms.TextInput(attrs={"placeholder": "Ej. se cortó la luz"}))
+
+    def clean(self):
+        d = super().clean()
+        if not self.errors:
+            d["duracion"] = d["horas"] * 60 + d["minutos"]
+            if d["duracion"] < 1:
+                self.add_error("minutos", "Indica cuánto duró el servicio.")
+        return d
 
 
 class VincularForm(FormEstilo):

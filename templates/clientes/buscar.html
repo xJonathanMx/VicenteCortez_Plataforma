@@ -1,44 +1,77 @@
-{% extends "base.html" %}{% load vc %}
-{% block titulo %}Buscar cliente{% endblock %}
-{% block contenido %}
+{% extends "base.html" %}{% load vc %} {% block titulo %}Buscar cliente{%
+endblock %} {% block contenido %}
 <div class="encabezado">
-  <div><h1>Buscar cliente</h1><p>{% if user.ve_todos_los_clientes %}Por RUN, nombre o apellido.{% else %}Solo aparecen los clientes que has atendido o registrado.{% endif %}</p></div>
-  {% puede "abrir_fichas" as abre %}
-  {% if abre %}<a class="btn btn-negro" href="{% url 'clientes:nuevo' %}"><i data-lucide="user-plus"></i>Nuevo cliente</a>{% endif %}
+  <div>
+    <h1>Buscar cliente</h1>
+    <p>
+      {% if user.ve_todos_los_clientes %}Por RUN, nombre o apellido.{% else
+      %}Solo aparecen los clientes que has atendido o registrado.{% endif %}
+    </p>
+  </div>
+  {% puede "abrir_fichas" as abre %} {% if abre %}<a
+    class="btn btn-negro"
+    href="{% url 'clientes:nuevo' %}"
+    ><i data-lucide="user-plus"></i>Nuevo cliente</a
+  >{% endif %}
 </div>
 <form method="get" class="d-flex gap-2 mb-4" role="search">
-  <input class="form-control" name="q" value="{{ q }}" data-run="1" placeholder="Ej. 12.345.678-5 o Camila Rojas" aria-label="Buscar cliente" autofocus>
-  <button class="btn btn-negro px-4"><i data-lucide="search"></i><span class="d-none d-sm-inline">Buscar</span></button>
+  <input
+    class="form-control"
+    name="q"
+    value="{{ q }}"
+    data-run="1"
+    placeholder="Ej. 12.345.678-5 o Camila Rojas"
+    aria-label="Buscar cliente"
+    autofocus
+  />
+  <button class="btn btn-negro px-4">
+    <i data-lucide="search"></i><span class="d-none d-sm-inline">Buscar</span>
+  </button>
 </form>
 
 {% if q %}
 <div class="tarjeta">
   {% for c in resultados %}
-    <a class="fila-lista" href="{% url 'clientes:detalle' c.run %}">
-      <div class="avatar">{{ c.inicial }}</div>
-      <div class="flex-grow-1 overflow-hidden">
-        <div class="principal-texto">{{ c.nombre_completo }}{% if not c.activo %} <span class="estado error">Deshabilitado</span>{% endif %}</div>
-        <div class="secundario">{{ c.run_formateado }}, {{ c.visitas }} visita{{ c.visitas|pluralize }}{% if c.ultima %}, última el {{ c.ultima|date:"d-m-Y" }}{% endif %}{% if c.estilista_fijo %}, estilista {{ c.estilista_fijo.nombre }}{% endif %}</div>
+  <a class="fila-lista" href="{% url 'clientes:detalle' c.run %}">
+    <div class="avatar">{{ c.inicial }}</div>
+    <div class="flex-grow-1 overflow-hidden">
+      <div class="principal-texto">
+        {{ c.nombre_completo }}{% if not c.activo %}
+        <span class="estado error">Deshabilitado</span>{% endif %}
       </div>
-      <i data-lucide="chevron-right" class="text-apagado"></i>
-    </a>
-  {% empty %}
-    <div class="vacio"><i data-lucide="search-x"></i>
-      <div>No encontramos clientes con «{{ q }}».</div>
-      {% if abre %}<a class="btn btn-relieve mt-3" href="{% url 'clientes:nuevo' %}?run={{ q|urlencode }}">Registrar cliente nuevo</a>{% endif %}
+      <div class="secundario">
+        {{ c.run_formateado }}, {{ c.visitas }} visita{{ c.visitas|pluralize
+        }}{% if c.ultima %}, última el {{ c.ultima|date:"d-m-Y" }}{% endif %}{%
+        if c.estilista_fijo %}, estilista {{ c.estilista_fijo.nombre }}{% endif
+        %}
+      </div>
     </div>
+    <i data-lucide="chevron-right" class="text-apagado"></i>
+  </a>
+  {% empty %}
+  <div class="vacio">
+    <i data-lucide="search-x"></i>
+    <div>No encontramos clientes con «{{ q }}».</div>
+    {% if abre %}<a
+      class="btn btn-relieve mt-3"
+      href="{% url 'clientes:nuevo' %}?run={{ q|urlencode }}"
+      >Registrar cliente nuevo</a
+    >{% endif %}
+  </div>
   {% endfor %}
 </div>
 {% elif recientes %}
 <h2 class="h5 mb-3">Atendidos recientemente</h2>
 <div class="tarjeta">
   {% for c in recientes %}
-    <a class="fila-lista" href="{% url 'clientes:detalle' c.run %}">
-      <div class="avatar">{{ c.inicial }}</div>
-      <div class="flex-grow-1"><div class="principal-texto">{{ c.nombre_completo }}</div><div class="secundario">Última visita el {{ c.ultima|date:"d-m-Y" }}</div></div>
-      <i data-lucide="chevron-right" class="text-apagado"></i>
-    </a>
+  <a class="fila-lista" href="{% url 'clientes:detalle' c.run %}">
+    <div class="avatar">{{ c.inicial }}</div>
+    <div class="flex-grow-1">
+      <div class="principal-texto">{{ c.nombre_completo }}</div>
+      <div class="secundario">Última visita el {{ c.ultima|date:"d-m-Y" }}</div>
+    </div>
+    <i data-lucide="chevron-right" class="text-apagado"></i>
+  </a>
   {% endfor %}
 </div>
-{% endif %}
-{% endblock %}
+{% endif %} {% endblock %}

@@ -7,6 +7,7 @@
   <div>
     <h1>Ficha N° {{ f.pk }} <span class="estado {{ f.estado_id|clase_estado }} align-middle">{{ f.estado }}</span></h1>
     <p>Abierta por {{ f.abierta_por.nombre_corto }} el {{ f.fecha_hora_inicio|date:"d-m-Y \a \l\a\s H:i" }}{% if f.fecha_hora_termino %}; terminó a las {{ f.fecha_hora_termino|date:"H:i" }}{% endif %}{% if f.validada_por %}; validada por {{ f.validada_por.nombre_corto }}{% endif %}</p>
+    {% if f.registro_atrasado %}<p class="small text-apagado mb-0"><i data-lucide="history"></i> Registro atrasado, cargado el {{ f.creado_en|date:"d-m-Y H:i" }}: {{ f.motivo_atraso }}</p>{% endif %}
   </div>
   <a class="btn btn-relieve" href="{% url 'fichas:lista' %}"><i data-lucide="arrow-left"></i>Historial</a>
 </div>
@@ -102,7 +103,7 @@
         {% else %}
           <p class="aviso warning mt-2 mb-0"><i data-lucide="info"></i><span>Solo {{ d.peluquero.nombre_corto }} o administración puede terminar este servicio, desde su propia cuenta.</span></p>
         {% endif %}
-      {% elif d.estado == "pendiente" %}
+      {% elif d.estado == "pendiente" and not f.registro_atrasado %}
         {% if d.peluquero_id == user.pk or cierra_otros %}
         <form method="post" action="{% url 'fichas:iniciar' d.pk %}" class="mt-3" data-confirmar="{{ d.aviso_simultaneo }}" data-confirmar-si="Iniciar de todas formas">{% csrf_token %}<input type="hidden" name="confirmar" value="">
           <button class="btn btn-negro btn-tactil"><i data-lucide="play"></i>Iniciar servicio</button></form>
@@ -112,15 +113,15 @@
       {% endif %}
       {% if d.tiempo_form and d.peluquero_id == user.pk or d.tiempo_form and cierra_otros %}
       {% with t=d.tiempo_form %}
-      <details class="mt-3">
-        <summary class="small fw-semibold" style="cursor:pointer">¿No se pudo marcar el tiempo? Regístralo a mano</summary>
+      <details class="mt-3"{% if f.registro_atrasado or t.error_envio %} open{% endif %}>
+        <summary class="small fw-semibold" style="cursor:pointer">{% if f.registro_atrasado %}Registra el tiempo de este servicio{% else %}¿No se pudo marcar el tiempo? Regístralo a mano{% endif %}</summary>
         <p class="small text-apagado mt-2 mb-0">Úsalo si se cortó la luz o se olvidó iniciar o terminar. El servicio queda terminado y marcado como registro manual.</p>
-        <form method="post" action="{% url 'fichas:tiempo_manual' d.pk %}" class="row g-2 mt-1 align-items-end" novalidate>{% csrf_token %}
-          <div class="col-12 col-md-4"><label class="form-label" for="{{ t.hora_inicio.id_for_label }}">{{ t.hora_inicio.label }}</label>{{ t.hora_inicio }}</div>
-          <div class="col-6 col-md-2"><label class="form-label" for="{{ t.horas.id_for_label }}">{{ t.horas.label }}</label>{{ t.horas }}</div>
-          <div class="col-6 col-md-2"><label class="form-label" for="{{ t.minutos.id_for_label }}">{{ t.minutos.label }}</label>{{ t.minutos }}</div>
-          <div class="col-12 col-md-4"><label class="form-label" for="{{ t.motivo.id_for_label }}">{{ t.motivo.label }}</label>{{ t.motivo }}</div>
-          <div class="col-12"><button class="btn btn-relieve">Guardar tiempo</button></div>
+        <form method="post" action="{% url 'fichas:tiempo_manual' d.pk %}" class="row g-2 mt-1 align-items-start" novalidate data-validar>{% csrf_token %}
+          {% for c, ancho in t.columnas %}<div class="{{ ancho }}{% if c.errors %} campo-error{% endif %}"><label class="form-label" for="{{ c.id_for_label }}">{{ c.label }}</label>{{ c }}{{ c.errors }}</div>
+          {% endfor %}<div class="col-12 d-flex align-items-center gap-3 flex-wrap">
+            <button class="btn btn-negro">Guardar tiempo</button>
+            <span class="text-danger small align-items-center gap-1 {% if t.error_envio %}d-inline-flex{% else %}d-none{% endif %}" role="alert" data-error-envio><i data-lucide="circle-alert"></i><span>{{ t.error_envio }}</span></span>
+          </div>
         </form>
       </details>
       {% endwith %}
@@ -172,10 +173,10 @@
 </section>
 
 {% if agregar_form %}
-<section class="tarjeta mb-4">
+<section class="tarjeta mb-4" id="agregar" style="scroll-margin-top: 120px">
   <h2 class="mb-1">Agregar servicio</h2>
   <p class="small text-apagado">Primero aparecen el estilista fijo del cliente y quienes tienen la especialidad. Solo se listan peluqueros con el servicio habilitado.</p>
-  <form method="post" action="{% url 'fichas:agregar_servicio' f.pk %}" novalidate>{% csrf_token %}
+  <form method="post" action="{% url 'fichas:agregar_servicio' f.pk %}" novalidate data-validar>{% csrf_token %}
     <div class="row g-3">
       {% if agregar_form.continuar %}{% campo agregar_form.continuar %}{% endif %}
       {% campo agregar_form.servicio "col-12 col-md-6" %}
@@ -183,7 +184,10 @@
       {% campo agregar_form.sesiones_totales "col-6 col-md-3" %}
       {% campo agregar_form.peluquero %}
     </div>
-    <button class="btn btn-negro mt-3"><i data-lucide="plus"></i>Agregar servicio</button>
+    <div class="d-flex align-items-center gap-3 mt-3 flex-wrap">
+      <button class="btn btn-negro"><i data-lucide="plus"></i>Agregar servicio</button>
+      <span class="text-danger small align-items-center gap-1 {% if agregar_error %}d-inline-flex{% else %}d-none{% endif %}" role="alert" data-error-envio><i data-lucide="circle-alert"></i><span>{{ agregar_error }}</span></span>
+    </div>
   </form>
 </section>
 {% endif %}

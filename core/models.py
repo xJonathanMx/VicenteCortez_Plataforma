@@ -583,6 +583,9 @@ class FichaAtencion(Auditado):
                                      related_name="+")
     fecha_validacion = models.DateTimeField(null=True, blank=True)
     motivo_anulacion = models.CharField(max_length=255, blank=True)
+    # Atención pasada cargada después (ej. sin sistema ese día): la fecha de inicio es la real, no la de carga.
+    registro_atrasado = models.BooleanField("registro atrasado", default=False)
+    motivo_atraso = models.CharField("motivo del registro atrasado", max_length=255, blank=True)
 
     class Meta:
         db_table = "ficha_atencion"

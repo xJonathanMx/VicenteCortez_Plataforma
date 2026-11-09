@@ -76,6 +76,41 @@
     });
   }
 
+  // Campos obligatorios vacíos: se marcan sin enviar, con el aviso junto al botón (form[data-validar])
+  function validarAntes() {
+    document.querySelectorAll("form[data-validar]").forEach(function (f) {
+      var aviso = f.querySelector("[data-error-envio]");
+      function limpiar(campo) {
+        var caja = campo.closest(".campo-error");
+        if (caja) caja.classList.remove("campo-error");
+        if (caja) caja.querySelectorAll(".errorlist").forEach(function (e) { e.remove(); });
+      }
+      f.querySelectorAll("[required]").forEach(function (c) {
+        c.addEventListener("change", function () { limpiar(c); });
+      });
+      f.addEventListener("submit", function (e) {
+        var faltan = [];
+        f.querySelectorAll("[required]").forEach(function (c) {
+          var salvo = c.dataset.salvo && f.elements[c.dataset.salvo];
+          if (c.value.trim() || (salvo && salvo.value)) return;
+          faltan.push(c);
+          var caja = c.parentElement;
+          if (!caja.classList.contains("campo-error")) {
+            caja.classList.add("campo-error");
+            caja.insertAdjacentHTML("beforeend", '<ul class="errorlist"><li>Este campo es obligatorio.</li></ul>');
+          }
+        });
+        if (!faltan.length) return;
+        e.preventDefault();
+        if (aviso) {
+          aviso.querySelector("span").textContent = "Revisa los campos marcados.";
+          aviso.classList.replace("d-none", "d-inline-flex");
+        }
+        faltan[0].focus({ preventScroll: true });
+      });
+    });
+  }
+
   // Evita doble envío en conexiones lentas del salón
   function unEnvio() {
     document.querySelectorAll("form").forEach(function (f) {
@@ -241,6 +276,6 @@
   }
 
   document.addEventListener("DOMContentLoaded", function () {
-    iconos(); tema(); guardables(); incentivos(); menu(); cronometros(); confirmaciones(); unEnvio(); sugerencias(); encabezadoFijo(); desplegablesMovil();
+    iconos(); tema(); guardables(); incentivos(); menu(); cronometros(); confirmaciones(); validarAntes(); unEnvio(); sugerencias(); encabezadoFijo(); desplegablesMovil();
   });
 })();

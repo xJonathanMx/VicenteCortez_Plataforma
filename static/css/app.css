@@ -123,7 +123,11 @@ a { color: var(--tinta); }
 .encabezado h1 { margin: 0; }
 .encabezado p { margin: 4px 0 0; color: var(--apagado); }
 /* Encabezado que queda fijo arriba al bajar (ej. el número de la ficha) */
-.encabezado-fijo { position: sticky; top: 0; z-index: 20; background: var(--bg); padding: 10px 0; margin-top: -10px; }
+/* El fondo sobresale a los lados (margen negativo) para que el relieve del botón quede dentro del encabezado;
+   arriba queda pegado al borde de la pantalla, por eso solo se redondea abajo. */
+.encabezado-fijo { position: sticky; top: 0; z-index: 20; background: var(--bg); padding: 10px 16px 14px;
+  margin: -10px -16px 22px; border-radius: 0 0 var(--radio-l) var(--radio-l); }
+@media (max-width: 991.98px) { .encabezado-fijo { padding: 10px 12px 12px; margin: -10px -12px 22px; } }
 .encabezado-fijo.pegado { box-shadow: 0 10px 14px -12px var(--sombra-acento, rgba(0,0,0,.25)); }
 @media (max-width: 575.98px) {
   .encabezado-fijo { flex-wrap: nowrap; align-items: center; }
@@ -230,6 +234,8 @@ a { color: var(--tinta); }
 .form-check-input:focus { box-shadow: 0 0 0 2px var(--sombra-acento); border-color: var(--tinta); }
 .invalid-feedback, .errorlist { color: var(--error); font-size: .82rem; }
 .errorlist { list-style: none; padding: 0; margin: 4px 0 0; }
+/* Bootstrap anima el salto a un ancla; al volver de un envío (#agregar, #s12) se veía subir y bajar. */
+:root { scroll-behavior: auto; }
 .campo-error .form-control, .campo-error .form-select { box-shadow: var(--hundido-s), 0 0 0 2px var(--error); }
 .checks-multiples { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px 14px; }
 .checks-multiples label { font-size: .9rem; display: flex; gap: 8px; align-items: center; }

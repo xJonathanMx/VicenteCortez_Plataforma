@@ -67,6 +67,9 @@ def programar_seguimiento(ficha):
             cierre = fin_de_mes(cierre + timedelta(days=1))
         programadas.append(("fin_mes", cierre))
 
+    # En una atención registrada con atraso, lo que ya debió enviarse no se envía tarde.
+    hoy = timezone.localdate()
+    programadas = [(tipo, fecha) for tipo, fecha in programadas if fecha >= hoy]
     creadas = []
     for tipo, fecha in programadas:
         # RF-VS-11: la restricción única impide duplicados; get_or_create no reenvía.
@@ -78,8 +81,9 @@ def programar_seguimiento(ficha):
     for s in servicios:
         dias = s.servicio.dia_renovacion
         if dias and s.hora_termino and not s.recordatorios.filter(tipo="renovacion").exists():
-            Recordatorio.objects.create(tipo="renovacion", cliente=ficha.cliente, detalle=s,
-                                        fecha_programada=timezone.localtime(s.hora_termino).date() + timedelta(days=dias))
+            fecha = timezone.localtime(s.hora_termino).date() + timedelta(days=dias)
+            if fecha >= hoy:
+                Recordatorio.objects.create(tipo="renovacion", cliente=ficha.cliente, detalle=s, fecha_programada=fecha)
     return creadas
 
 

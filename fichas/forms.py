@@ -25,11 +25,31 @@ class NuevaFichaForm(FormEstilo):
                                         required=False)
     diagnostico = forms.CharField(label="Diagnóstico inicial", required=False, widget=forms.Textarea(attrs={
         "rows": 3, "placeholder": "Lo que observas a simple vista: largo, estado, color base, canas…"}))
+    fecha_hora_inicio = forms.DateTimeField(
+        label="Fecha y hora real de la atención", required=False, input_formats=["%Y-%m-%dT%H:%M"],
+        widget=forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"),
+        help_text="Déjalo vacío si la atención es ahora.")
+    motivo_atraso = forms.CharField(label="Motivo", max_length=200, required=False,
+                                    widget=forms.TextInput(attrs={"placeholder": "Ej. ese día no había sistema"}))
+
+    def __init__(self, *args, usuario=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not (usuario and usuario.tiene_privilegio("validar_fichas")):
+            del self.fields["fecha_hora_inicio"]  # solo administración carga atenciones pasadas
+            del self.fields["motivo_atraso"]
+        else:
+            self.fields["fecha_hora_inicio"].widget.attrs["max"] = f"{timezone.localtime():%Y-%m-%dT%H:%M}"
+            self.fields["fecha_hora_inicio"].nota_etiqueta = "solo si es una atención pasada"
+            self.fields["motivo_atraso"].nota_etiqueta = "obligatorio si indicas la fecha"
+            for n in ["fecha_hora_inicio", "motivo_atraso"]:
+                self.fields[n].widget.attrs.update(col(6))
 
     def clean(self):
         d = super().clean()
         if not d.get("cliente") and not d.get("nombre_provisorio") and not self.errors:
             self.add_error("nombre_provisorio", "Indica el RUN del cliente o al menos su nombre.")
+        if d.get("fecha_hora_inicio") and not (d.get("motivo_atraso") or "").strip():
+            self.add_error("motivo_atraso", "Indica por qué se registra con otra fecha.")
         return d
 
 
@@ -80,6 +100,8 @@ class AgregarServicioForm(FormEstilo):
                       f"(sesión {d.sesiones_siguientes.count() + 2} de {d.sesiones_totales})")
         if not abiertos.exists():
             del self.fields["continuar"]
+        else:
+            self.fields["servicio"].widget.attrs["data-salvo"] = "continuar"  # no se exige si continúa un tratamiento
 
     def clean(self):
         d = super().clean()
@@ -121,6 +143,13 @@ class TiempoManualForm(FormEstilo):
                                  widget=forms.NumberInput(attrs={"inputmode": "numeric", "step": 5}))
     motivo = forms.CharField(label="Motivo", max_length=200,
                              widget=forms.TextInput(attrs={"placeholder": "Ej. se cortó la luz"}))
+    error_envio = ""  # aviso junto al botón cuando no se pudo guardar
+
+    @property
+    def columnas(self):
+        anchos = {"hora_inicio": "col-12 col-md-4", "horas": "col-6 col-md-2", "minutos": "col-6 col-md-2",
+                  "motivo": "col-12 col-md-4"}
+        return [(self[n], a) for n, a in anchos.items()]
 
     def clean(self):
         d = super().clean()

@@ -204,17 +204,17 @@
   }
 
     // Formateo automático de RUN mientras se escribe
-  document.querySelectorAll('[data-run]').forEach(function (input) {
-    input.addEventListener('input', function () {
-      var v = input.value.replace(/[^0-9kK]/g, '').toUpperCase().slice(0, 9);
-      if (v.length > 1) {
-        var cuerpo = v.slice(0, -1).replace(/\D/g, '');
-        cuerpo = cuerpo.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-        v = cuerpo + '-' + v.slice(-1);
-      }
-      input.value = v;
-    });
+document.querySelectorAll('[data-run]').forEach(function (input) {
+  input.addEventListener('input', function () {
+    if (!/^[\d.\-]+[kK]?$/.test(input.value)) return;
+    var v = input.value.replace(/[^0-9kK]/g, '').toUpperCase().slice(0, 9);
+    if (v.length > 1) {
+      var cuerpo = v.slice(0, -1).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      v = cuerpo + '-' + v.slice(-1);
+    }
+    input.value = v;
   });
+});
 
   // Lista de incentivos de la meta: agregar, quitar y mostrar el monto solo si es dinero
   function incentivos() {

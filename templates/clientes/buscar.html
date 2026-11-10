@@ -1,12 +1,10 @@
-{% extends "base.html" %}{% load vc %} {% block titulo %}Buscar cliente{%
-endblock %} {% block contenido %}
+{% extends "base.html" %}{% load vc %} 
+{% block titulo %}Buscar cliente
+{%endblock %} {% block contenido %}
 <div class="encabezado">
   <div>
     <h1>Buscar cliente</h1>
-    <p>
-      {% if user.ve_todos_los_clientes %}Por RUN, nombre o apellido.{% else
-      %}Solo aparecen los clientes que has atendido o registrado.{% endif %}
-    </p>
+    <p>{% if user.ve_todos_los_clientes %}Por RUN, nombre o apellido.{% else %}Solo aparecen los clientes que has atendido o registrado.{% endif %}</p>
   </div>
   {% puede "abrir_fichas" as abre %} {% if abre %}<a
     class="btn btn-negro"
@@ -39,12 +37,7 @@ endblock %} {% block contenido %}
         {{ c.nombre_completo }}{% if not c.activo %}
         <span class="estado error">Deshabilitado</span>{% endif %}
       </div>
-      <div class="secundario">
-        {{ c.run_formateado }}, {{ c.visitas }} visita{{ c.visitas|pluralize
-        }}{% if c.ultima %}, última el {{ c.ultima|date:"d-m-Y" }}{% endif %}{%
-        if c.estilista_fijo %}, estilista {{ c.estilista_fijo.nombre }}{% endif
-        %}
-      </div>
+      <div class="secundario">{{ c.run_formateado }}, {{ c.visitas }} visita{{ c.visitas|pluralize }}{% if c.ultima %}, última el {{ c.ultima|date:"d-m-Y" }}{% endif %}{% if c.estilista_fijo %}, estilista {{ c.estilista_fijo.nombre }}{% endif %}</div>
     </div>
     <i data-lucide="chevron-right" class="text-apagado"></i>
   </a>

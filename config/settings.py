@@ -137,12 +137,14 @@ ENVIO_MAX_INTENTOS = int(os.getenv("ENVIO_MAX_INTENTOS", "3"))           # RNF C
 AVISO_VENCIMIENTO_DIAS = int(os.getenv("AVISO_VENCIMIENTO_DIAS", "15"))  # RF-GC-16 / RF-PA-02
 
 # RNF Seguridad-04: HTTPS obligatorio fuera de desarrollo.
+# Solo para probar en local sin certificado (p. ej. Docker en localhost) se usa SECURE_SSL_REDIRECT=False:
+# así tampoco se exigen cookies "secure", que el navegador no envía por http y bloquearían el login.
 if not DEBUG:
     SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", True)
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
-    SECURE_HSTS_SECONDS = 60 * 60 * 24 * 30
+    SESSION_COOKIE_SECURE = SECURE_SSL_REDIRECT
+    CSRF_COOKIE_SECURE = SECURE_SSL_REDIRECT
+    SECURE_HSTS_SECONDS = 60 * 60 * 24 * 30 if SECURE_SSL_REDIRECT else 0
 
 LOGGING = {
     "version": 1,

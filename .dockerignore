@@ -1,0 +1,29 @@
+# Lo que NO se copia a la imagen de Docker.
+# Credenciales: nunca dentro de la imagen (llegan por variables de entorno).
+.env
+.env.*
+!.env.example
+
+# Entorno virtual y cachés locales (la imagen instala sus propias dependencias)
+env/
+venv/
+__pycache__/
+*.pyc
+
+# Datos y archivos generados localmente
+db.sqlite3
+staticfiles/
+media/
+*.log
+
+# Control de versiones y editores
+.git/
+.gitignore
+.vscode/
+.idea/
+.DS_Store
+
+# Archivos de Docker (no se necesitan dentro de la imagen)
+Dockerfile
+docker-compose.yml
+.dockerignore

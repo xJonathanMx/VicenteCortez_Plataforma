@@ -36,4 +36,9 @@ def documentar_columnas():
                 texto = str(campo.verbose_name).capitalize()
                 if campo.help_text:
                     texto += f". {campo.help_text}"
-                campo.db_comment = texto[:250]
+                campo.db_comment = sin_porcentaje(texto)[:250]
+
+
+def sin_porcentaje(texto):
+    """Postgres (psycopg) toma un '%' suelto en COMMENT ON como parámetro y la migración falla."""
+    return texto.replace("%", "porcentaje")

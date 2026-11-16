@@ -329,7 +329,7 @@ class Migration(migrations.Migration):
                 (
                     "porcentaje_minimo",
                     models.PositiveSmallIntegerField(
-                        db_comment="Cumplimiento mínimo (%)",
+                        db_comment="Cumplimiento mínimo (porcentaje)",
                         unique=True,
                         verbose_name="cumplimiento mínimo (%)",
                     ),
@@ -337,14 +337,14 @@ class Migration(migrations.Migration):
                 (
                     "porcentaje_pago",
                     models.PositiveSmallIntegerField(
-                        db_comment="% del incentivo base que se informa",
+                        db_comment="porcentaje del incentivo base que se informa",
                         verbose_name="% del incentivo base que se informa",
                     ),
                 ),
             ],
             options={
                 "db_table": "nivel_incentivo",
-                "db_table_comment": "Escala de incentivo según % de cumplimiento (RF-CI-11).",
+                "db_table_comment": "Escala de incentivo según porcentaje de cumplimiento (RF-CI-11).",
                 "ordering": ["porcentaje_minimo"],
             },
         ),
@@ -1080,7 +1080,7 @@ class Migration(migrations.Migration):
                 (
                     "porc_comision_guardado",
                     models.DecimalField(
-                        db_comment="Comisión (%)",
+                        db_comment="Comisión (porcentaje)",
                         decimal_places=2,
                         default=0,
                         max_digits=5,

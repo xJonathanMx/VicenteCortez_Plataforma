@@ -886,7 +886,7 @@ class ConfiguracionCorreo(models.Model):
 # ============================================================================
 
 class NivelIncentivo(models.Model):
-    """Escala de incentivo según % de cumplimiento (RF-CI-11)."""
+    """Escala de incentivo según porcentaje de cumplimiento (RF-CI-11)."""
     porcentaje_minimo = models.PositiveSmallIntegerField("cumplimiento mínimo (%)", unique=True)
     porcentaje_pago = models.PositiveSmallIntegerField("% del incentivo base que se informa")
 

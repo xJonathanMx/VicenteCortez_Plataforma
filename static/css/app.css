@@ -430,3 +430,6 @@ a { color: var(--tinta); }
 .resumen-pago { border-radius: var(--radio-m); box-shadow: var(--hundido); padding: 14px 18px; max-width: 420px; }
 .resumen-pago > div { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; font-size: .92rem; }
 .resumen-pago .total { border-top: 1px solid var(--linea); margin-top: 6px; padding-top: 8px; font-weight: 700; color: var(--tinta); }
+
+/* Página 403 */
+.sin-permiso { max-width: 560px; margin: 40px auto; }

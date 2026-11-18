@@ -235,7 +235,7 @@ def html_valoracion(v, ctx):
     sitio = settings.SITIO_URL.rstrip("/")
     estrellas = [{"nota": n, "url": f"{v.enlace}?nota={n}"} for n in range(1, 6)]
     return render_to_string("correos/valoracion.html", {
-        **ctx, "estrellas": estrellas, "logo": f"{sitio}/static/img/logo_correo.png", "fecha": v.ficha.fecha_hora_inicio})
+        **ctx, "estrellas": estrellas, "logo": f"{sitio}/static/img/logo_correo.png?v=2", "fecha": v.ficha.fecha_hora_inicio})
 
 
 def enviar_recordatorio(r):

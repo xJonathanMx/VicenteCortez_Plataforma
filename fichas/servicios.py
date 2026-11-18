@@ -11,8 +11,8 @@ from django.forms.models import model_to_dict
 from django.utils import timezone
 
 from core.models import (
-    DetalleAtencionServicio, DetalleFichaInsumo, EstadoFicha, FichaAtencion, HistorialEstadoFicha, Usuario,
-    UsuarioServicio,
+    DetalleAtencionServicio, DetalleFichaInsumo, EstadoFicha, FichaAtencion, HistorialEstadoFicha, MetaMensual,
+    Usuario, UsuarioServicio,
 )
 
 
@@ -27,12 +27,58 @@ def cambiar_estado(ficha, codigo, usuario, motivo=""):
                                         usuario=usuario, motivo=motivo)
 
 
+def mes_cerrado(momento):
+    """True si el mes de ese momento ya tiene metas cerradas (sus comisiones e incentivos quedaron congelados)."""
+    local = timezone.localtime(momento)
+    return MetaMensual.objects.filter(mes=local.month, anio=local.year, cerrada=True).exists()
+
+
 @transaction.atomic
-def abrir_ficha(usuario, cliente=None, nombre_provisorio="", diagnostico=""):
-    """RF-FA-01 / RF-FA-02: registra quién la abrió y cuándo; el cliente puede quedar pendiente."""
+def ficha_abierta_de(cliente, excluir=None):
+    """Ficha abierta o en atención del cliente (la atención de hoy), si existe."""
+    if cliente is None:
+        return None
+    qs = FichaAtencion.objects.filter(cliente=cliente, estado_id__in=("abierta", "en_atencion"))
+    if excluir is not None:
+        qs = qs.exclude(pk=excluir.pk)
+    return qs.order_by("-fecha_hora_inicio").first()
+
+
+def validar_sin_ficha_abierta(cliente, excluir=None):
+    """Un cliente no puede tener dos fichas abiertas a la vez: los servicios se agregan a la misma ficha."""
+    otra = ficha_abierta_de(cliente, excluir)
+    if otra:
+        raise ValidationError(
+            f"{cliente.nombre_completo} ya tiene la ficha N° {otra.pk} {otra.estado.nombre.lower()} "
+            f"(desde el {timezone.localtime(otra.fecha_hora_inicio):%d-%m-%Y %H:%M}). "
+            "Agrega ahí los servicios o ciérrala antes de abrir otra.")
+
+
+def abrir_ficha(usuario, cliente=None, nombre_provisorio="", diagnostico="", fecha_hora_inicio=None, motivo_atraso=""):
+    """RF-FA-01 / RF-FA-02: registra quién la abrió y cuándo; el cliente puede quedar pendiente.
+    Con fecha_hora_inicio, administración carga una atención pasada: la ficha queda marcada como
+    registro atrasado, con el motivo, y el historial guarda cuándo se cargó realmente.
+    Una atención de hoy no se abre si el cliente ya tiene otra ficha abierta."""
+    if not fecha_hora_inicio:
+        validar_sin_ficha_abierta(cliente)
+    datos = {}
+    if fecha_hora_inicio:
+        if not usuario.tiene_privilegio("validar_fichas"):
+            raise PermissionDenied("Solo administración puede registrar atenciones pasadas.")
+        if fecha_hora_inicio > timezone.now():
+            raise ValidationError("La fecha de la atención no puede ser futura.")
+        if not motivo_atraso.strip():
+            raise ValidationError("Indica por qué se registra con otra fecha.")
+        if mes_cerrado(fecha_hora_inicio):
+            raise ValidationError("Ese mes ya está cerrado en metas; no se pueden agregar atenciones.")
+        datos = {"fecha_hora_inicio": fecha_hora_inicio, "registro_atrasado": True, "motivo_atraso": motivo_atraso.strip()}
     ficha = FichaAtencion.objects.create(cliente=cliente, abierta_por=usuario, nombre_provisorio=nombre_provisorio,
-                                         diagnostico=diagnostico, creado_por=usuario, modificado_por=usuario)
-    HistorialEstadoFicha.objects.create(ficha=ficha, estado_id="abierta", usuario=usuario, motivo="Ficha abierta")
+                                         diagnostico=diagnostico, creado_por=usuario, modificado_por=usuario, **datos)
+    motivo = "Ficha abierta"
+    if ficha.registro_atrasado:
+        motivo = (f"Registro atrasado de la atención del {timezone.localtime(fecha_hora_inicio):%d-%m-%Y %H:%M}: "
+                  f"{ficha.motivo_atraso}")
+    HistorialEstadoFicha.objects.create(ficha=ficha, estado_id="abierta", usuario=usuario, motivo=motivo)
     return ficha
 
 
@@ -115,6 +161,8 @@ def iniciar_servicio(detalle, usuario):
         raise ValidationError("Este servicio ya fue iniciado.")
     if not detalle.ficha.editable:
         raise ValidationError("La ficha está cerrada.")
+    if detalle.ficha.registro_atrasado:
+        raise ValidationError("Es una atención pasada: registra su tiempo a mano.")
     detalle.estado = "en_proceso"
     detalle.hora_inicio = timezone.now()
     detalle.modificado_por = usuario
@@ -151,6 +199,14 @@ def registrar_tiempo_manual(detalle, usuario, hora_inicio, minutos, motivo):
     termino = hora_inicio + timedelta(minutes=minutos)
     if termino > timezone.now():
         raise ValidationError("Según esa hora y duración, el servicio todavía no termina. Revisa los datos.")
+    ficha = detalle.ficha
+    if ficha.registro_atrasado:
+        dia = timezone.localtime(ficha.fecha_hora_inicio)
+        if timezone.localtime(hora_inicio).date() != dia.date() or hora_inicio < ficha.fecha_hora_inicio:
+            raise ValidationError(f"El servicio debe empezar el {dia:%d-%m-%Y}, desde las {dia:%H:%M} "
+                                  "(la fecha y hora de la atención).")
+        if mes_cerrado(termino):
+            raise ValidationError("Ese mes ya está cerrado en metas; no se pueden agregar atenciones.")
     detalle.estado = "terminado"
     detalle.hora_inicio = hora_inicio
     detalle.hora_termino = termino

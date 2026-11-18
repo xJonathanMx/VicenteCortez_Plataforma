@@ -8,6 +8,7 @@
   </div>
   <div class="d-flex gap-2 flex-wrap">
     <a class="btn btn-relieve" href="{% url 'clientes:editar' c.run %}"><i data-lucide="pencil"></i>Editar datos</a>
+    {% if c.correo %}<a class="btn btn-relieve" href="{% url 'clientes:correo' c.run %}"><i data-lucide="mail"></i>Enviar correo</a>{% endif %}
     {% puede "abrir_fichas" as abre %}
     {% if abre and c.activo %}<a class="btn btn-negro" href="{% url 'fichas:nueva' %}?cliente={{ c.run }}"><i data-lucide="file-plus"></i>Nueva ficha</a>{% endif %}
   </div>

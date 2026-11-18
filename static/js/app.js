@@ -76,6 +76,41 @@
     });
   }
 
+  // Campos obligatorios vacíos: se marcan sin enviar, con el aviso junto al botón (form[data-validar])
+  function validarAntes() {
+    document.querySelectorAll("form[data-validar]").forEach(function (f) {
+      var aviso = f.querySelector("[data-error-envio]");
+      function limpiar(campo) {
+        var caja = campo.closest(".campo-error");
+        if (caja) caja.classList.remove("campo-error");
+        if (caja) caja.querySelectorAll(".errorlist").forEach(function (e) { e.remove(); });
+      }
+      f.querySelectorAll("[required]").forEach(function (c) {
+        c.addEventListener("change", function () { limpiar(c); });
+      });
+      f.addEventListener("submit", function (e) {
+        var faltan = [];
+        f.querySelectorAll("[required]").forEach(function (c) {
+          var salvo = c.dataset.salvo && f.elements[c.dataset.salvo];
+          if (c.value.trim() || (salvo && salvo.value)) return;
+          faltan.push(c);
+          var caja = c.parentElement;
+          if (!caja.classList.contains("campo-error")) {
+            caja.classList.add("campo-error");
+            caja.insertAdjacentHTML("beforeend", '<ul class="errorlist"><li>Este campo es obligatorio.</li></ul>');
+          }
+        });
+        if (!faltan.length) return;
+        e.preventDefault();
+        if (aviso) {
+          aviso.querySelector("span").textContent = "Revisa los campos marcados.";
+          aviso.classList.replace("d-none", "d-inline-flex");
+        }
+        faltan[0].focus({ preventScroll: true });
+      });
+    });
+  }
+
   // Evita doble envío en conexiones lentas del salón
   function unEnvio() {
     document.querySelectorAll("form").forEach(function (f) {
@@ -169,17 +204,17 @@
   }
 
     // Formateo automático de RUN mientras se escribe
-  document.querySelectorAll('[data-run]').forEach(function (input) {
-    input.addEventListener('input', function () {
-      var v = input.value.replace(/[^0-9kK]/g, '').toUpperCase().slice(0, 9);
-      if (v.length > 1) {
-        var cuerpo = v.slice(0, -1).replace(/\D/g, '');
-        cuerpo = cuerpo.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-        v = cuerpo + '-' + v.slice(-1);
-      }
-      input.value = v;
-    });
+document.querySelectorAll('[data-run]').forEach(function (input) {
+  input.addEventListener('input', function () {
+    if (!/^[\d.\-]+[kK]?$/.test(input.value)) return;
+    var v = input.value.replace(/[^0-9kK]/g, '').toUpperCase().slice(0, 9);
+    if (v.length > 1) {
+      var cuerpo = v.slice(0, -1).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      v = cuerpo + '-' + v.slice(-1);
+    }
+    input.value = v;
   });
+});
 
   // Lista de incentivos de la meta: agregar, quitar y mostrar el monto solo si es dinero
   function incentivos() {
@@ -240,7 +275,33 @@
     revisar();
   }
 
+  // Los avisos (éxito o error) aparecen bajo el formulario que se envió, no arriba de la página.
+  function avisosJuntoAlBoton() {
+    var CLAVE = "vc-ultimo-formulario";
+    document.addEventListener("submit", function (e) {
+      var f = e.target;
+      if (!(f instanceof HTMLFormElement) || (f.method || "").toLowerCase() !== "post") return;
+      var dato = { ruta: location.pathname, id: f.id || "",
+                   indice: Array.prototype.indexOf.call(document.querySelectorAll("form"), f) };
+      try { sessionStorage.setItem(CLAVE, JSON.stringify(dato)); } catch (err) { /* sin almacenamiento */ }
+    }, true);
+
+    var guardado = null;
+    try { guardado = JSON.parse(sessionStorage.getItem(CLAVE) || "null"); sessionStorage.removeItem(CLAVE); }
+    catch (err) { guardado = null; }
+    var avisos = document.querySelector("[data-avisos]");
+    if (!avisos || !guardado || guardado.ruta !== location.pathname) return;
+    var f = (guardado.id && document.getElementById(guardado.id)) || document.querySelectorAll("form")[guardado.indice];
+    if (!f || f.contains(avisos)) return;
+    var plegado = f.closest("details");
+    if (plegado) plegado.open = true;
+    if (!f.offsetParent) return;  // formulario oculto: el aviso se queda arriba
+    avisos.classList.add("avisos-junto");
+    f.insertAdjacentElement("afterend", avisos);
+    avisos.scrollIntoView({ block: "center" });
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
-    iconos(); tema(); guardables(); incentivos(); menu(); cronometros(); confirmaciones(); unEnvio(); sugerencias(); encabezadoFijo(); desplegablesMovil();
+    iconos(); tema(); guardables(); incentivos(); menu(); cronometros(); confirmaciones(); validarAntes(); unEnvio(); sugerencias(); encabezadoFijo(); desplegablesMovil(); avisosJuntoAlBoton();
   });
 })();

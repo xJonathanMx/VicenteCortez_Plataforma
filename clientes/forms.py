@@ -3,7 +3,7 @@ from django.conf import settings
 from django.urls import reverse
 from django.utils.html import format_html
 
-from core.forms import CampoRun, ModelFormEstilo, col
+from core.forms import CampoRun, FormEstilo, ModelFormEstilo, col
 from core.models import Cliente, Usuario
 
 
@@ -69,3 +69,14 @@ class EstilistaForm(ModelFormEstilo):
         super().__init__(*args, **kwargs)
         self.fields["estilista_fijo"].queryset = peluqueros_activos()
         self.fields["estilista_fijo"].empty_label = "Sin estilista fijo"
+
+
+class CorreoClienteForm(FormEstilo):
+    """Correo escrito a mano para un cliente (por ejemplo, los cuidados después de un tratamiento)."""
+    asunto = forms.CharField(label="Asunto", max_length=150)
+    mensaje = forms.CharField(label="Mensaje", max_length=5000, widget=forms.Textarea(attrs={"rows": 12}))
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for n in self.fields:
+            self.fields[n].widget.attrs.update(col(12))

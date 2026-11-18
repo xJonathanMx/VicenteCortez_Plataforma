@@ -9,7 +9,9 @@
       gmail: { servidor: "smtp.gmail.com", puerto: 587, seguridad: "tls" },
       // Cuentas personales @outlook, @hotmail y @live. Microsoft puede rechazar el envío con contraseña:
       // si falla, conviene enviar con Gmail y poner el @live en «Responder a».
-      outlook: { servidor: "smtp-mail.outlook.com", puerto: 587, seguridad: "tls" }
+      outlook: { servidor: "smtp-mail.outlook.com", puerto: 587, seguridad: "tls" },
+      // Puerto 2525: algunos hostings (ej. Render gratis) bloquean los puertos 25, 465 y 587.
+      brevo: { servidor: "smtp-relay.brevo.com", puerto: 2525, seguridad: "tls" }
     };
     var sel = document.getElementById("id_correo-proveedor");
     if (!sel) return;
@@ -32,19 +34,14 @@
 {% with pestana="canales" %}{% include "seguimiento/_pestanas.html" %}{% endwith %}
 <section class="tarjeta mb-4">
   <h2 class="mb-3">Canales</h2>
-  {% for c in canales %}
+  {% for c in canales %}{% if c.codigo in habilitados %}
     <form method="post" class="fila-lista">{% csrf_token %}<input type="hidden" name="canal" value="{{ c.pk }}">
       <i data-lucide="{% if c.codigo == 'email' %}mail{% else %}message-circle{% endif %}"></i>
       <span class="flex-grow-1 fw-semibold">{{ c.nombre }}</span>
-      {% if c.codigo in habilitados %}
-        <span class="estado {% if c.activo %}ok{% else %}error{% endif %}">{% if c.activo %}Activo{% else %}Inactivo{% endif %}</span>
-        <button class="btn btn-relieve btn-sm">{% if c.activo %}Desactivar{% else %}Activar{% endif %}</button>
-      {% else %}
-        <span class="estado">Aún no habilitado</span>
-      {% endif %}
+      <span class="estado {% if c.activo %}ok{% else %}error{% endif %}">{% if c.activo %}Activo{% else %}Inactivo{% endif %}</span>
+      <button class="btn btn-relieve btn-sm">{% if c.activo %}Desactivar{% else %}Activar{% endif %}</button>
     </form>
-  {% endfor %}
-  <p class="small text-apagado mt-3 mb-0">Por ahora todos los mensajes se envían por correo. WhatsApp queda preparado (API oficial de Meta) y se habilita con la variable CANALES_ENVIO=email,whatsapp en el archivo .env.</p>
+  {% endif %}{% endfor %}
 </section>
 <section class="tarjeta mb-4" id="correo">
   <div class="tarjeta-titulo">
@@ -63,6 +60,7 @@
       {% campo f.usuario "col-12 col-md-8" %}
       {% campo f.clave "col-12 col-md-6" %}
       {% campo f.remitente_nombre "col-12 col-md-6" %}
+      {% campo f.correo_remitente "col-12 col-md-6" %}
       {% campo f.responder_a "col-12 col-md-6" %}
     </div>
     <details class="mt-3" {% if f.servidor.errors or f.puerto.errors %}open{% endif %} data-avanzado>
@@ -103,6 +101,16 @@
     </ol>
     <div class="aviso warning mb-0"><i data-lucide="triangle-alert"></i><div>Si la prueba dice algo como <em>«Authentication unsuccessful»</em> o <em>«basic authentication is disabled»</em>, Microsoft está bloqueando el envío desde programas externos.
       Solución: envía con un <strong>Gmail de la peluquería</strong> y escribe el correo @live en <strong>«Responder a»</strong>; así las respuestas de los clientes llegan igual al @live.</div></div>
+  </details>
+  <details class="mt-2" data-guia="brevo">
+    <summary class="small fw-semibold" style="cursor:pointer">Guía: Brevo (si el servidor bloquea Gmail u Outlook)</summary>
+    <ol class="small mt-2 mb-0">
+      <li>En <a href="https://app.brevo.com" target="_blank" rel="noopener">app.brevo.com</a>, agrega y verifica el correo que enviará los mensajes en <strong>Configuración › Remitentes</strong>.</li>
+      <li>En <strong>Configuración › SMTP y API › SMTP</strong>, genera una clave SMTP y copia el «Iniciar sesión» (algo como <em>xxxx@smtp-brevo.com</em>).</li>
+      <li>Si Brevo bloquea las IP no autorizadas, autoriza la IP del servidor o desactiva ese bloqueo para SMTP.</li>
+      <li>Aquí: Proveedor <strong>Brevo</strong> (servidor smtp-relay.brevo.com, puerto 2525), el «Iniciar sesión» en «Correo de la cuenta», la clave SMTP en «Contraseña de aplicación» y el correo verificado en <strong>«Correo remitente»</strong>. Activa «Enviar correos reales» y guarda.</li>
+      <li>Toca «Enviar correo de prueba».</li>
+    </ol>
   </details>
 
   <hr class="my-4" style="border-color:var(--linea);opacity:1">

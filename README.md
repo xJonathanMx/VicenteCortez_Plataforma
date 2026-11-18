@@ -1,8 +1,74 @@
-# Plataforma Vicente Cortez: ficha digital
+# Ficha Digital – Peluquería Vicente Cortez (FD-VC)
+
+Proyecto Capstone de Ingeniería en Informática, Duoc UC (sección 004D), 2026.
 
 Sistema web para la Peluquería Vicente Cortez: fichas digitales de atención, seguimiento post-tratamiento por correo, metas e incentivos de peluqueros, giftcards, promociones y reportes.
 
-Django 5.2 + Bootstrap 5 + Supabase (Postgres). Mobile-first: pensado para usarse desde el celular de cada peluquero.
+## Descripción
+
+**Problema.** La peluquería registra las atenciones en fichas de papel. Con unos 30 peluqueros, la información de cada cliente (servicios, productos, fórmulas y observaciones) queda dispersa o se pierde. No se puede consultar el historial al atender, no hay seguimiento de la satisfacción después del servicio y el cálculo de comisiones y metas es manual.
+
+**Para quién.** Los peluqueros (internos y externos), recepción y la administración de la peluquería. La clienta es Violeta, de la Peluquería Vicente Cortez.
+
+**Qué hace.** Cada peluquero registra la ficha desde el navegador de su celular: abre la atención, inicia y termina cada servicio con un toque y anota lo que usó. El sistema guarda el historial del cliente, envía por correo la valoración al día siguiente, calcula comisiones y metas con valores congelados y genera reportes en Excel y PDF.
+
+## Equipo
+
+| Integrante        | Rol Scrum            |
+| ----------------- | -------------------- |
+| Jonathan Molina   | Product Owner        |
+| Benjamín Monsalve | Scrum Master         |
+| Josefa Quirilao   | Equipo de Desarrollo |
+
+Docentes: Mabel Herrera y Juan Pablo Mellado.
+
+## Metodología
+
+**Scrum.** Proyecto del 13/08/2026 al 14/12/2026, organizado en sprints. Cada ~15 días hay una reunión de seguimiento con la clienta, que funciona como Sprint Review. Cada historia se cierra con la [Definition of Done](https://github.com/xJonathanMx/Capstone_G5_VicenteCortez) del equipo: criterios de aceptación cumplidos, integrada por pull request y revisada por otro integrante, con pruebas aprobadas y documentación al día.
+
+## Tecnologías
+
+| Capa                | Tecnología                                                   |
+| ------------------- | ------------------------------------------------------------ |
+| Lenguaje            | Python 3.14                                                  |
+| Backend             | Django 5.2 (ORM, autenticación, plantillas)                  |
+| Frontend            | Plantillas de Django, Bootstrap 5.3, JavaScript, Lucide 0.460 |
+| Base de datos       | PostgreSQL 16 (Supabase en la nube; contenedor local con Docker) |
+| Servidor web        | Gunicorn 23 + WhiteNoise (archivos estáticos)                |
+| Correo              | SMTP (Gmail u Outlook, configurable desde la plataforma)     |
+| Reportes            | openpyxl (Excel) y ReportLab (PDF)                           |
+| Despliegue          | Docker y Docker Compose                                      |
+| Pruebas             | Django TestCase (109 pruebas)                                |
+
+## Arquitectura
+
+Arquitectura **cliente-servidor en capas**, como **monolito modular**: una sola aplicación Django dividida en módulos por área de requerimientos. Solo Django accede a la base de datos, a través del ORM.
+
+```text
+ Celular / navegador del peluquero
+          │  HTTPS
+          ▼
+ ┌──────────────────────── Contenedor web ────────────────────────┐
+ │ Gunicorn → Django                                               │
+ │  Presentación: plantillas + Bootstrap (templates/, static/)     │
+ │  Aplicación:   vistas y formularios por módulo                  │
+ │                (clientes, fichas, catalogo, seguimiento,        │
+ │                 metas, beneficios, reportes, core)              │
+ │  Negocio:      servicios.py (reglas: precio congelado,          │
+ │                permisos por rol, estados de ficha)              │
+ │  Datos:        ORM de Django (core/models.py)                   │
+ └───────────────┬─────────────────────────────────────────────────┘
+                 │ SQL
+                 ▼
+ PostgreSQL (Supabase o contenedor db)
+                 ▲
+ ┌───────────────┴──── Contenedor envios ────┐        ┌──────────┐
+ │ procesar_envios cada 15 minutos           │──SMTP─▶│ Correo   │
+ │ (valoraciones y recordatorios)            │        │ cliente  │
+ └───────────────────────────────────────────┘        └──────────┘
+```
+
+La documentación del proyecto (visión, historias de usuario, DAS, plan de pruebas, manual técnico y evidencias) está en el repositorio **[Capstone_G5_VicenteCortez](https://github.com/xJonathanMx/Capstone_G5_VicenteCortez)**.
 
 ---
 
@@ -148,7 +214,42 @@ El botón con ícono de luna o sol, junto a la fecha (y en la esquina superior d
 
 ---
 
-## Puesta en marcha (local)
+## Levantar con Docker (recomendado)
+
+Requisito: [Docker Desktop](https://www.docker.com/products/docker-desktop/) abierto («Engine running»).
+
+```bash
+copy .env.example .env
+docker compose up -d --build
+docker compose exec web python manage.py cargar_datos_iniciales --demo
+```
+
+En el `.env` cambia al menos `SECRET_KEY` y `POSTGRES_PASSWORD`. Luego abre http://localhost:8000 y entra con los usuarios demo de la tabla de abajo.
+
+Se levantan 3 contenedores:
+
+| Servicio | Qué hace                                                                  |
+| -------- | ------------------------------------------------------------------------- |
+| `web`    | La plataforma (Django + Gunicorn) en el puerto 8000. Aplica las migraciones al arrancar. |
+| `db`     | PostgreSQL 16 local. Los datos quedan en el volumen `datos_postgres`.     |
+| `envios` | Ejecuta `procesar_envios` cada 15 minutos (valoraciones y recordatorios). |
+
+Comandos útiles:
+
+```bash
+docker compose ps                      # estado de los contenedores
+docker compose logs -f web             # ver lo que pasa en la plataforma
+docker compose exec web python manage.py test     # ejecutar las pruebas
+docker compose exec web python manage.py createsuperuser
+docker compose down                    # apagar (los datos se conservan)
+docker compose down -v                 # apagar y BORRAR la base local
+```
+
+Para usar **Supabase** en vez del Postgres local, define `DATABASE_URL` y `DB_SSL=True` en el `.env`. Ojo: debe ir la misma `SECRET_KEY` con la que se guardó la contraseña del correo.
+
+Para producción: `DEBUG=False`, `SECURE_SSL_REDIRECT=True`, el dominio en `ALLOWED_HOSTS` y `CSRF_TRUSTED_ORIGINS`, y un proxy con certificado HTTPS delante del puerto 8000.
+
+## Puesta en marcha sin Docker (local)
 
 ```bash
 python -m venv venv
@@ -202,7 +303,7 @@ Los envíos programados se procesan con:
 python manage.py procesar_envios
 ```
 
-Prográmalo cada 15 minutos (Programador de tareas de Windows o cron). También está el botón «Enviar pendientes ahora» en _Valoraciones_.
+Con Docker esto ya lo hace el servicio `envios`. Sin Docker, prográmalo cada 15 minutos (Programador de tareas de Windows o cron). También está el botón «Enviar pendientes ahora» en _Valoraciones_.
 
 Los enlaces de los correos usan `SITIO_URL` del `.env`. En local apuntan a `127.0.0.1` y solo funcionan en ese computador; al publicar la plataforma hay que poner su dirección pública.
 

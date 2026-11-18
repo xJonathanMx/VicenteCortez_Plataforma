@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block titulo %}Sin permiso{% endblock %}
+{% block contenido %}
+<section class="tarjeta sin-permiso">
+  <div class="vacio">
+    <i data-lucide="shield-alert"></i>
+    <h1 class="h4 fw-bold text-dark mb-2">No tienes permiso para entrar aquí</h1>
+    <p class="mb-4">
+      {% if exception and exception != "No tienes permiso para esta acción." %}{{ exception }}{% else %}Tu rol no incluye acceso a esta sección.{% endif %}
+      Si crees que deberías tenerlo, pídeselo a un administrador.
+    </p>
+    <a class="btn btn-negro" href="{% url 'inicio' %}"><i data-lucide="house"></i>Volver al inicio</a>
+  </div>
+</section>
+{% endblock %}

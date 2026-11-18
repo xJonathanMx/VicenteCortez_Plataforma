@@ -4,7 +4,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -28,9 +28,10 @@ def fichas_visibles(usuario):
     return qs.filter(Q(abierta_por=usuario) | Q(servicios__peluquero=usuario)).distinct()  # RF-AS-02
 
 
-def ficha_visible(request, pk):
-    ficha = get_object_or_404(FichaAtencion, pk=pk)
-    if not fichas_visibles(request.user).filter(pk=pk).exists():
+def ficha_visible(request, pk, qs=None):
+    ficha = get_object_or_404(qs if qs is not None else FichaAtencion.objects.all(), pk=pk)
+    # Quien ve todas las fichas no necesita la segunda consulta.
+    if not request.user.ve_todos_los_clientes and not fichas_visibles(request.user).filter(pk=pk).exists():
         raise PermissionDenied("Esta ficha no te corresponde.")
     return ficha
 
@@ -46,7 +47,8 @@ def lista(request):
         datos["desde"] = datos["hasta"] = timezone.localdate().isoformat()
     form = FiltroFichasForm(datos or None)
     qs = (fichas_visibles(request.user).select_related("cliente", "estado", "abierta_por")
-          .prefetch_related("servicios__servicio", "servicios__peluquero"))
+          .prefetch_related(Prefetch("servicios", queryset=DetalleAtencionServicio.objects
+                                     .select_related("servicio", "peluquero"))))
     if form.is_valid():
         d = form.cleaned_data
         if d["desde"]:
@@ -77,23 +79,38 @@ def nueva(request):
         cliente = Cliente.objects.filter(run=request.GET["cliente"], activo=True).first()
         if cliente:
             inicial["cliente"] = cliente.run_formateado
-    form = NuevaFichaForm(request.POST or None, initial=inicial)
+    form = NuevaFichaForm(request.POST or None, initial=inicial, usuario=request.user)
     if request.method == "POST" and form.is_valid():
         d = form.cleaned_data
-        ficha = fs.abrir_ficha(request.user, d["cliente"], d["nombre_provisorio"], d["diagnostico"])
-        messages.success(request, f"Ficha N° {ficha.pk} abierta. Agrega los servicios.")
-        return redirect("fichas:detalle", pk=ficha.pk)
+        try:
+            ficha = fs.abrir_ficha(request.user, d["cliente"], d["nombre_provisorio"], d["diagnostico"],
+                                   d.get("fecha_hora_inicio"), d.get("motivo_atraso", ""))
+        except (ValidationError, PermissionDenied) as e:
+            _error(request, e)
+        else:
+            if ficha.registro_atrasado:
+                messages.success(request, f"Ficha N° {ficha.pk} registrada con fecha "
+                                          f"{timezone.localtime(ficha.fecha_hora_inicio):%d-%m-%Y %H:%M}. "
+                                          "Agrega los servicios y registra el tiempo de cada uno a mano.")
+            else:
+                messages.success(request, f"Ficha N° {ficha.pk} abierta. Agrega los servicios.")
+            return redirect("fichas:detalle", pk=ficha.pk)
     return render(request, "fichas/nueva.html", {"form": form, "cliente": cliente})
 
 
 @login_required
 def detalle(request, pk):
-    ficha = ficha_visible(request, pk)
-    servicios = (ficha.servicios.select_related("servicio__tipo", "peluquero", "tratamiento_origen")
-                 .prefetch_related("insumos__insumo"))
+    # Todo lo de la ficha se lee en pocas consultas: la base está lejos y cada consulta cuesta ~90 ms.
+    servicios_qs = (DetalleAtencionServicio.objects
+                    .select_related("servicio__tipo", "peluquero", "tratamiento_origen")
+                    .prefetch_related(Prefetch("insumos", queryset=DetalleFichaInsumo.objects.select_related("insumo"))))
+    qs = (FichaAtencion.objects
+          .select_related("estado", "cliente__estilista_fijo", "abierta_por", "validada_por", "modificado_por")
+          .prefetch_related(Prefetch("servicios", queryset=servicios_qs)))
+    ficha = ficha_visible(request, pk, qs)
     u = request.user
     ctx = {
-        "f": ficha, "servicios": _con_aviso(servicios),
+        "f": ficha, "servicios": _con_aviso(ficha.servicios.all()),
         "puede_editar": ficha.editable and (u.tiene_privilegio("abrir_fichas")),
         "historial": ficha.historial.select_related("estado", "estado_anterior", "usuario"),
         "versiones": ficha.versiones.select_related("usuario"),
@@ -103,11 +120,23 @@ def detalle(request, pk):
         "vincular_form": VincularForm(),
         "insumo_form": InsumoUsadoForm(),
     }
+    tiempo_pendiente = request.session.pop("tiempo_manual", None) or {}
     for d in ctx["servicios"]:
         if d.estado in ("pendiente", "en_proceso"):
-            d.tiempo_form = _tiempo_form(d)
+            if tiempo_pendiente.get("detalle") == d.pk:
+                d.tiempo_form = _tiempo_form(d, tiempo_pendiente["datos"])
+                d.tiempo_form.is_valid()  # para marcar los campos con error
+                d.tiempo_form.error_envio = tiempo_pendiente["error"]
+            else:
+                d.tiempo_form = _tiempo_form(d)
     if ctx["puede_editar"]:
-        ctx["agregar_form"] = AgregarServicioForm(ficha=ficha, usuario=u)
+        pendiente = request.session.pop("agregar_servicio", None)
+        if pendiente and pendiente.get("ficha") == ficha.pk:
+            ctx["agregar_form"] = AgregarServicioForm(pendiente["datos"], ficha=ficha, usuario=u)
+            ctx["agregar_form"].is_valid()  # para marcar los campos con error
+            ctx["agregar_error"] = pendiente["error"]
+        else:
+            ctx["agregar_form"] = AgregarServicioForm(ficha=ficha, usuario=u)
     # Total por pagar: se ve siempre, junto al diagnóstico
     usos_gc = list(ficha.usos_giftcard.select_related("giftcard", "registrado_por"))
     usos_pr = list(ficha.usos_promocion.select_related("cliente_promocion__promocion", "servicio", "detalle",
@@ -155,11 +184,15 @@ def agregar_servicio(request, pk):
             fs.agregar_servicio(ficha, d["servicio"], d["peluquero"], d["variante"], request.user,
                                 sesiones_totales=d["sesiones_totales"], tratamiento_origen=d.get("continuar"))
             messages.success(request, f"{d['servicio'].nombre} agregado a la ficha.")
+            return redirect("fichas:detalle", pk=pk)
         except ValidationError as e:
-            _error(request, e)
+            error = " ".join(e.messages)
     else:
-        messages.error(request, "Revisa el servicio: " + "; ".join(e for errs in form.errors.values() for e in errs))
-    return redirect("fichas:detalle", pk=pk)
+        error = "Revisa los campos marcados."
+    # El error se muestra junto al botón, con lo que se había elegido, en vez de arriba de la página.
+    datos = {k: v for k, v in request.POST.items() if k != "csrfmiddlewaretoken"}
+    request.session["agregar_servicio"] = {"ficha": ficha.pk, "datos": datos, "error": error}
+    return redirect(f"{reverse('fichas:detalle', args=[pk])}#agregar")
 
 
 def _con_aviso(servicios):
@@ -173,7 +206,12 @@ def _con_aviso(servicios):
 def _tiempo_form(d, data=None):
     """Formulario de registro manual, sugiriendo el inicio real (si se inició) y la duración estimada."""
     estimado = d.servicio.tiempo_estimado
-    inicio = d.hora_inicio or timezone.now() - timedelta(minutes=estimado)
+    if d.hora_inicio:
+        inicio = d.hora_inicio
+    elif d.ficha.registro_atrasado:  # atención pasada: se sugiere la hora real de la ficha
+        inicio = d.ficha.fecha_hora_inicio
+    else:
+        inicio = timezone.now() - timedelta(minutes=estimado)
     return TiempoManualForm(data, prefix=f"t{d.pk}", initial={
         "hora_inicio": timezone.localtime(inicio).replace(second=0, microsecond=0),
         "horas": estimado // 60, "minutos": estimado % 60})
@@ -232,10 +270,16 @@ def tiempo_manual(request, pk):
             messages.success(request, f"{d.servicio.nombre} registrado a mano: duró {c['horas']} h {c['minutos']:02d} min.")
             if d.ficha.todos_terminados:
                 messages.info(request, "Todos los servicios están terminados: ya puedes cerrar la ficha.")
-        except (ValidationError, PermissionDenied) as e:
-            _error(request, e)
+            return redirect(f"{reverse('fichas:detalle', args=[d.ficha_id])}#s{d.pk}")
+        except ValidationError as e:
+            error = " ".join(e.messages)
+        except PermissionDenied as e:
+            error = str(e)
     else:
-        messages.error(request, "Revisa el registro manual: " + "; ".join(e for errs in form.errors.values() for e in errs))
+        error = "Revisa los campos marcados."
+    # Como al agregar servicio: el aviso queda junto a «Guardar tiempo», con lo que se había escrito.
+    datos = {k: v for k, v in request.POST.items() if k != "csrfmiddlewaretoken"}
+    request.session["tiempo_manual"] = {"detalle": d.pk, "datos": datos, "error": error}
     return redirect(f"{reverse('fichas:detalle', args=[d.ficha_id])}#s{d.pk}")
 
 
@@ -368,6 +412,12 @@ def vincular(request, pk):
         messages.error(request, "La ficha ya tiene cliente.")
         return redirect("fichas:detalle", pk=pk)
     form = VincularForm(request.POST)
+    if form.is_valid() and ficha.editable:
+        try:
+            fs.validar_sin_ficha_abierta(form.cleaned_data["cliente"], excluir=ficha)
+        except ValidationError as e:
+            _error(request, e)
+            return redirect("fichas:detalle", pk=pk)
     if form.is_valid():
         ficha.cliente = form.cleaned_data["cliente"]
         ficha.modificado_por = request.user

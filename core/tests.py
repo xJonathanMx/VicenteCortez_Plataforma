@@ -30,6 +30,9 @@ class Base(TestCase):
         cls.admin = Usuario.objects.get(run="11111111")
         cls.pelu = Usuario.objects.get(run="16666666")
         cls.cliente = Cliente.objects.first()
+        # Los datos demo dejan fichas abiertas; las pruebas abren la atención de hoy desde cero
+        # (un cliente no puede tener dos fichas abiertas a la vez).
+        cls.cliente.fichas.filter(estado_id__in=("abierta", "en_atencion")).update(estado_id="anulada")
 
     def entrar(self, u):
         self.client.force_login(u)
@@ -162,6 +165,19 @@ class TiempoManualTests(Base):
         self.assertIn(self.pelu.nombre_corto, d.motivo_cierre)
         self.assertEqual(d.ficha.estado_id, "en_atencion")
 
+    def test_error_queda_junto_a_guardar_tiempo(self):
+        d = self.nuevo_servicio()
+        self.entrar(self.pelu)
+        p = f"t{d.pk}-"
+        r = self.client.post(reverse("fichas:tiempo_manual", args=[d.pk]), {
+            p + "hora_inicio": (timezone.localtime() - timedelta(hours=3)).strftime("%Y-%m-%dT%H:%M"),
+            p + "horas": 1, p + "minutos": 0, p + "motivo": ""}, follow=True)
+        self.assertContains(r, '<i data-lucide="circle-alert"></i><span>Revisa los campos marcados.</span>')
+        self.assertContains(r, "campo-error")
+        self.assertNotContains(r, "Revisa el registro manual")
+        d.refresh_from_db()
+        self.assertEqual(d.estado, "pendiente")
+
     def test_sirve_para_un_servicio_en_proceso(self):
         d = self.nuevo_servicio()
         fs.iniciar_servicio(d, self.pelu)
@@ -181,6 +197,67 @@ class TiempoManualTests(Base):
         fs.registrar_tiempo_manual(d, self.pelu, hace_3h, 60, "Luz")
         with self.assertRaises(ValidationError):  # ya está terminado
             fs.registrar_tiempo_manual(d, self.pelu, hace_3h, 60, "Luz")
+
+
+class FichaAtrasadaTests(Base):
+    """Atención pasada cargada después con su fecha real."""
+
+    def setUp(self):
+        self.cuando = (timezone.localtime() - timedelta(days=3)).replace(hour=11, minute=0, second=0, microsecond=0)
+        self.corte = Servicio.objects.get(nombre="Corte tradicional")
+
+    def test_flujo_completo_por_web(self):
+        self.entrar(self.admin)
+        r = self.client.post(reverse("fichas:nueva"), {
+            "cliente": self.cliente.run_formateado, "fecha_hora_inicio": self.cuando.strftime("%Y-%m-%dT%H:%M"),
+            "motivo_atraso": "Ese día no había sistema"})
+        ficha = FichaAtencion.objects.order_by("-pk").first()
+        self.assertRedirects(r, reverse("fichas:detalle", args=[ficha.pk]))
+        self.assertEqual((ficha.fecha_hora_inicio, ficha.registro_atrasado), (self.cuando, True))
+        self.assertIn("Ese día no había sistema", ficha.historial.first().motivo)
+        d = fs.agregar_servicio(ficha, self.corte, self.pelu, "basico", self.admin)
+        with self.assertRaises(ValidationError):  # no se inicia en vivo
+            fs.iniciar_servicio(d, self.admin)
+        r = self.client.get(reverse("fichas:detalle", args=[ficha.pk]))
+        self.assertContains(r, "Registro atrasado")
+        self.assertNotContains(r, "Iniciar servicio")
+        self.assertContains(r, self.cuando.strftime("%Y-%m-%dT%H:%M"))  # el tiempo manual sugiere la hora real
+        fs.registrar_tiempo_manual(d, self.admin, self.cuando, 45, "Registro atrasado")
+        fs.cerrar_ficha(ficha, self.admin)
+        ficha.refresh_from_db()
+        self.assertEqual(ficha.fecha_hora_termino, self.cuando + timedelta(minutes=45))
+        # Las valoraciones de esa visita ya no se envían tarde
+        self.assertFalse(ficha.valoraciones.filter(fecha_programada__lt=timezone.localdate()).exists())
+
+    def test_giftcard_queda_con_la_fecha_de_la_atencion(self):
+        ficha = fs.abrir_ficha(self.admin, self.cliente, fecha_hora_inicio=self.cuando, motivo_atraso="Sin sistema")
+        g = Giftcard.objects.create(beneficiario=self.cliente, monto_inicial=10000, saldo_actual=10000,
+                                    fecha_vencimiento=timezone.localdate() + timedelta(days=30), creada_por=self.admin)
+        self.assertEqual(usar_giftcard(g, ficha, 5000, self.admin).fecha_uso, self.cuando)
+
+    def test_reglas(self):
+        with self.assertRaises(PermissionDenied):  # sin privilegio de administración
+            fs.abrir_ficha(self.pelu, self.cliente, fecha_hora_inicio=self.cuando, motivo_atraso="x")
+        with self.assertRaises(ValidationError):  # sin motivo
+            fs.abrir_ficha(self.admin, self.cliente, fecha_hora_inicio=self.cuando, motivo_atraso=" ")
+        with self.assertRaises(ValidationError):  # futura
+            fs.abrir_ficha(self.admin, self.cliente, fecha_hora_inicio=timezone.now() + timedelta(hours=1),
+                           motivo_atraso="x")
+        ficha = fs.abrir_ficha(self.admin, self.cliente, fecha_hora_inicio=self.cuando, motivo_atraso="x")
+        d = fs.agregar_servicio(ficha, self.corte, self.pelu, "basico", self.admin)
+        with self.assertRaises(ValidationError):  # antes de la hora de la ficha
+            fs.registrar_tiempo_manual(d, self.admin, self.cuando - timedelta(hours=1), 30, "x")
+        with self.assertRaises(ValidationError):  # otro día
+            fs.registrar_tiempo_manual(d, self.admin, self.cuando + timedelta(days=1), 30, "x")
+        from core.models import MetaMensual
+        MetaMensual.objects.update_or_create(peluquero=self.pelu, mes=self.cuando.month, anio=self.cuando.year,
+                                             defaults={"meta_cliente": 10, "cerrada": True})
+        with self.assertRaises(ValidationError):  # mes cerrado en metas
+            fs.abrir_ficha(self.admin, self.cliente, fecha_hora_inicio=self.cuando, motivo_atraso="x")
+
+    def test_peluquero_no_ve_la_opcion(self):
+        self.entrar(self.pelu)
+        self.assertNotContains(self.client.get(reverse("fichas:nueva")), "atención pasada")
 
 
 class PantallasTests(Base):
@@ -293,6 +370,15 @@ class FichaTests(Base):
         self.client.post(reverse("fichas:cerrar", args=[ficha.pk]))
         ficha.refresh_from_db()
         self.assertEqual(ficha.estado_id, "cerrada")
+
+    def test_error_al_agregar_servicio_queda_junto_al_boton(self):
+        ficha = fs.abrir_ficha(self.admin, self.cliente)
+        self.entrar(self.admin)
+        r = self.client.post(reverse("fichas:agregar_servicio", args=[ficha.pk]), {"variante": "basico"}, follow=True)
+        self.assertEqual(r.redirect_chain[-1][0], f"{reverse('fichas:detalle', args=[ficha.pk])}#agregar")
+        self.assertContains(r, '<i data-lucide="circle-alert"></i><span>Revisa los campos marcados.</span>')
+        self.assertNotContains(r, "Revisa el servicio:")
+        self.assertNotContains(self.client.get(reverse("fichas:detalle", args=[ficha.pk])), "Revisa los campos")
 
 
 class SeguimientoTests(Base):
@@ -545,6 +631,29 @@ class ConfiguracionCorreoTests(Base):
         self.assertEqual((kwargs["host"], kwargs["username"], kwargs["password"], kwargs["use_tls"]),
                          ("smtp.gmail.com", "peluqueria@gmail.com", "secreta", True))
         self.assertIn("peluqueria@gmail.com", m.from_email)
+
+    def test_brevo_usuario_smtp_distinto_del_remitente(self):
+        """Brevo entrega un usuario xxxx@smtp-brevo.com; el correo sale desde el remitente verificado."""
+        from unittest import mock
+        from django.core.mail import EmailMessage
+        from core.correo import BackendConfigurable
+        from core.models import ConfiguracionCorreo
+        self.entrar(self.admin)
+        self.client.post(reverse("seguimiento:canales"), {
+            "guardar_correo": "1", "correo-proveedor": "brevo", "correo-usuario": "c3ea3e001@smtp-brevo.com",
+            "correo-clave": "clave-smtp", "correo-remitente_nombre": "Peluquería Vicente Cortez",
+            "correo-correo_remitente": "peluqueria@hotmail.com", "correo-servidor": "smtp-relay.brevo.com",
+            "correo-puerto": "2525", "correo-seguridad": "tls", "correo-activo": "on"})
+        conf = ConfiguracionCorreo.actual()
+        self.assertEqual((conf.usuario, conf.correo_remitente, conf.puerto),
+                         ("c3ea3e001@smtp-brevo.com", "peluqueria@hotmail.com", 2525))
+        with mock.patch("core.correo.SMTPBackend") as smtp:
+            smtp.return_value.send_messages.return_value = 1
+            m = EmailMessage("Hola", "Cuerpo", None, ["cliente@correo.cl"])
+            BackendConfigurable().send_messages([m])
+        self.assertEqual(smtp.call_args.kwargs["username"], "c3ea3e001@smtp-brevo.com")
+        self.assertEqual(smtp.call_args.kwargs["port"], 2525)
+        self.assertEqual(m.from_email, "Peluquería Vicente Cortez <peluqueria@hotmail.com>")
 
     def test_apagado_va_a_consola(self):
         from unittest import mock

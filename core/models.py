@@ -201,9 +201,15 @@ class Usuario(AbstractBaseUser):
         return (self.nombre or "?")[0].upper()
 
     # --- Roles y privilegios (RF-AS-06, RF-AS-07) ---
+    def _roles_lista(self):
+        """Roles del usuario leídos una sola vez por petición (códigos y nombres salen de la misma consulta)."""
+        if not hasattr(self, "_roles_lista_cache"):
+            self._roles_lista_cache = list(self.roles.all())
+        return self._roles_lista_cache
+
     def codigos_roles(self):
         if not hasattr(self, "_roles_cache"):
-            self._roles_cache = set(self.roles.values_list("codigo", flat=True))
+            self._roles_cache = {r.codigo for r in self._roles_lista()}
         return self._roles_cache
 
     def privilegios(self):
@@ -233,7 +239,7 @@ class Usuario(AbstractBaseUser):
 
     @property
     def descripcion_roles(self):
-        return ", ".join(self.roles.values_list("nombre", flat=True)) or "Sin rol"
+        return ", ".join(r.nombre for r in self._roles_lista()) or "Sin rol"
 
     # Compatibilidad con el admin de Django.
     def has_perm(self, perm, obj=None):
@@ -583,6 +589,9 @@ class FichaAtencion(Auditado):
                                      related_name="+")
     fecha_validacion = models.DateTimeField(null=True, blank=True)
     motivo_anulacion = models.CharField(max_length=255, blank=True)
+    # Atención pasada cargada después (ej. sin sistema ese día): la fecha de inicio es la real, no la de carga.
+    registro_atrasado = models.BooleanField("registro atrasado", default=False)
+    motivo_atraso = models.CharField("motivo del registro atrasado", max_length=255, blank=True)
 
     class Meta:
         db_table = "ficha_atencion"
@@ -840,6 +849,9 @@ class ConfiguracionCorreo(models.Model):
     usuario = models.CharField("correo de la cuenta", max_length=120, blank=True)
     clave_cifrada = models.TextField("contraseña (cifrada)", blank=True)
     remitente_nombre = models.CharField("nombre del remitente", max_length=80, default="Peluquería Vicente Cortez")
+    correo_remitente = models.EmailField("correo remitente", max_length=120, blank=True,
+                                         help_text="Solo si el proveedor entrega un usuario distinto del correo "
+                                                   "(ej. Brevo). Vacío = el correo de la cuenta.")
     responder_a = models.EmailField("responder a", max_length=120, blank=True,
                                     help_text="Si el cliente contesta un correo, la respuesta llega a esta dirección "
                                               "(ej. el @live de la peluquería). Vacío = a la misma cuenta.")
@@ -861,7 +873,8 @@ class ConfiguracionCorreo(models.Model):
 
     @property
     def remitente(self):
-        return f"{self.remitente_nombre} <{self.usuario}>" if self.usuario else ""
+        correo = self.correo_remitente or self.usuario
+        return f"{self.remitente_nombre} <{correo}>" if correo else ""
 
     def fijar_clave(self, clave):
         from core.correo import cifrar
@@ -883,7 +896,7 @@ class ConfiguracionCorreo(models.Model):
 # ============================================================================
 
 class NivelIncentivo(models.Model):
-    """Escala de incentivo según % de cumplimiento (RF-CI-11)."""
+    """Escala de incentivo según porcentaje de cumplimiento (RF-CI-11)."""
     porcentaje_minimo = models.PositiveSmallIntegerField("cumplimiento mínimo (%)", unique=True)
     porcentaje_pago = models.PositiveSmallIntegerField("% del incentivo base que se informa")
 

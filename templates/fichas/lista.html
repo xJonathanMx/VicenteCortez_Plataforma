@@ -19,7 +19,7 @@
     <a class="fila-lista flex-wrap" href="{% url 'fichas:detalle' f.pk %}">
       <div class="flex-grow-1" style="min-width: 220px">
         <div class="principal-texto">{{ f.nombre_cliente }}</div>
-        <div class="secundario">N° {{ f.pk }}, {{ f.fecha_hora_inicio|date:"d-m-Y H:i" }}:
+        <div class="secundario">N° {{ f.pk }}, {{ f.fecha_hora_inicio|date:"d-m-Y H:i" }}{% if f.registro_atrasado %} (registro atrasado){% endif %}:
           {% for s in f.servicios.all %}{{ s.servicio.nombre }} con {{ s.peluquero.nombre }}{% if not forloop.last %}; {% endif %}{% empty %}sin servicios{% endfor %}</div>
       </div>
       <span class="fw-semibold tabular">{{ f.total|pesos }}</span>

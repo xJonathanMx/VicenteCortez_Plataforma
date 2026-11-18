@@ -33,24 +33,27 @@ class PlantillaForm(ModelFormEstilo):
 
 
 class ConfiguracionCorreoForm(ModelFormEstilo):
-    PROVEEDORES = [("gmail", "Gmail"), ("outlook", "Outlook, Hotmail o Live"), ("otro", "Otro")]
+    PROVEEDORES = [("gmail", "Gmail"), ("outlook", "Outlook, Hotmail o Live"), ("brevo", "Brevo"), ("otro", "Otro")]
     proveedor = forms.ChoiceField(choices=PROVEEDORES, label="Proveedor", required=False)
     clave = forms.CharField(label="Contraseña de aplicación", required=False, strip=True,
                             widget=forms.PasswordInput(render_value=False, attrs={"autocomplete": "new-password"}))
 
     class Meta:
         model = ConfiguracionCorreo
-        fields = ["activo", "usuario", "remitente_nombre", "responder_a", "servidor", "puerto", "seguridad"]
+        fields = ["activo", "usuario", "remitente_nombre", "correo_remitente", "responder_a", "servidor", "puerto",
+                  "seguridad"]
         labels = {"usuario": "Correo de la cuenta"}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.order_fields(["proveedor", "usuario", "clave", "remitente_nombre", "responder_a", "servidor", "puerto",
-                           "seguridad", "activo"])
+        self.order_fields(["proveedor", "usuario", "clave", "remitente_nombre", "correo_remitente", "responder_a",
+                           "servidor", "puerto", "seguridad", "activo"])
         self.fields["responder_a"].widget.attrs.update({"inputmode": "email", "placeholder": "peluqueria@live.cl"})
+        self.fields["correo_remitente"].widget.attrs.update({"inputmode": "email", "placeholder": "peluqueria@hotmail.com"})
         servidor = (self.instance.servidor or "").lower()
         self.fields["proveedor"].initial = ("gmail" if "gmail" in servidor else
-                                            "outlook" if "outlook" in servidor or "office365" in servidor else "otro")
+                                            "outlook" if "outlook" in servidor or "office365" in servidor else
+                                            "brevo" if "brevo" in servidor else "otro")
         self.fields["usuario"].widget = forms.EmailInput(attrs={"class": "form-control", "inputmode": "email",
                                                                 "placeholder": "peluqueria@gmail.com"})
         self.fields["usuario"].nota_etiqueta = False  # necesario para enviar

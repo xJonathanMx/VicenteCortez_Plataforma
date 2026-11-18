@@ -68,6 +68,8 @@ class CP02PrecioComisionCongeladosTests(Base):
 
         antigua.refresh_from_db()
         self.assertEqual((antigua.precio_cobrado, float(antigua.porc_comision_guardado)), (20000, 40.0))
+        # La atención anterior ya terminó: un cliente no puede tener dos fichas abiertas a la vez.
+        type(antigua.ficha).objects.filter(pk=antigua.ficha_id).update(estado_id="validada")
         nueva = fs.agregar_servicio(fs.abrir_ficha(self.admin, self.cliente), servicio, self.pelu, "basico",
                                     self.admin)
         self.assertEqual((nueva.precio_cobrado, float(nueva.porc_comision_guardado)), (25000, 50.0))

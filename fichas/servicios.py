@@ -34,10 +34,33 @@ def mes_cerrado(momento):
 
 
 @transaction.atomic
+def ficha_abierta_de(cliente, excluir=None):
+    """Ficha abierta o en atención del cliente (la atención de hoy), si existe."""
+    if cliente is None:
+        return None
+    qs = FichaAtencion.objects.filter(cliente=cliente, estado_id__in=("abierta", "en_atencion"))
+    if excluir is not None:
+        qs = qs.exclude(pk=excluir.pk)
+    return qs.order_by("-fecha_hora_inicio").first()
+
+
+def validar_sin_ficha_abierta(cliente, excluir=None):
+    """Un cliente no puede tener dos fichas abiertas a la vez: los servicios se agregan a la misma ficha."""
+    otra = ficha_abierta_de(cliente, excluir)
+    if otra:
+        raise ValidationError(
+            f"{cliente.nombre_completo} ya tiene la ficha N° {otra.pk} {otra.estado.nombre.lower()} "
+            f"(desde el {timezone.localtime(otra.fecha_hora_inicio):%d-%m-%Y %H:%M}). "
+            "Agrega ahí los servicios o ciérrala antes de abrir otra.")
+
+
 def abrir_ficha(usuario, cliente=None, nombre_provisorio="", diagnostico="", fecha_hora_inicio=None, motivo_atraso=""):
     """RF-FA-01 / RF-FA-02: registra quién la abrió y cuándo; el cliente puede quedar pendiente.
     Con fecha_hora_inicio, administración carga una atención pasada: la ficha queda marcada como
-    registro atrasado, con el motivo, y el historial guarda cuándo se cargó realmente."""
+    registro atrasado, con el motivo, y el historial guarda cuándo se cargó realmente.
+    Una atención de hoy no se abre si el cliente ya tiene otra ficha abierta."""
+    if not fecha_hora_inicio:
+        validar_sin_ficha_abierta(cliente)
     datos = {}
     if fecha_hora_inicio:
         if not usuario.tiene_privilegio("validar_fichas"):

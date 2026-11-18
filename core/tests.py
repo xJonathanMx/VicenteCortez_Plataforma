@@ -30,6 +30,9 @@ class Base(TestCase):
         cls.admin = Usuario.objects.get(run="11111111")
         cls.pelu = Usuario.objects.get(run="16666666")
         cls.cliente = Cliente.objects.first()
+        # Los datos demo dejan fichas abiertas; las pruebas abren la atención de hoy desde cero
+        # (un cliente no puede tener dos fichas abiertas a la vez).
+        cls.cliente.fichas.filter(estado_id__in=("abierta", "en_atencion")).update(estado_id="anulada")
 
     def entrar(self, u):
         self.client.force_login(u)

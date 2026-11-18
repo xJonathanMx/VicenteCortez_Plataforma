@@ -412,6 +412,12 @@ def vincular(request, pk):
         messages.error(request, "La ficha ya tiene cliente.")
         return redirect("fichas:detalle", pk=pk)
     form = VincularForm(request.POST)
+    if form.is_valid() and ficha.editable:
+        try:
+            fs.validar_sin_ficha_abierta(form.cleaned_data["cliente"], excluir=ficha)
+        except ValidationError as e:
+            _error(request, e)
+            return redirect("fichas:detalle", pk=pk)
     if form.is_valid():
         ficha.cliente = form.cleaned_data["cliente"]
         ficha.modificado_por = request.user

@@ -201,9 +201,15 @@ class Usuario(AbstractBaseUser):
         return (self.nombre or "?")[0].upper()
 
     # --- Roles y privilegios (RF-AS-06, RF-AS-07) ---
+    def _roles_lista(self):
+        """Roles del usuario leídos una sola vez por petición (códigos y nombres salen de la misma consulta)."""
+        if not hasattr(self, "_roles_lista_cache"):
+            self._roles_lista_cache = list(self.roles.all())
+        return self._roles_lista_cache
+
     def codigos_roles(self):
         if not hasattr(self, "_roles_cache"):
-            self._roles_cache = set(self.roles.values_list("codigo", flat=True))
+            self._roles_cache = {r.codigo for r in self._roles_lista()}
         return self._roles_cache
 
     def privilegios(self):
@@ -233,7 +239,7 @@ class Usuario(AbstractBaseUser):
 
     @property
     def descripcion_roles(self):
-        return ", ".join(self.roles.values_list("nombre", flat=True)) or "Sin rol"
+        return ", ".join(r.nombre for r in self._roles_lista()) or "Sin rol"
 
     # Compatibilidad con el admin de Django.
     def has_perm(self, perm, obj=None):

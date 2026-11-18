@@ -4,7 +4,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -28,9 +28,10 @@ def fichas_visibles(usuario):
     return qs.filter(Q(abierta_por=usuario) | Q(servicios__peluquero=usuario)).distinct()  # RF-AS-02
 
 
-def ficha_visible(request, pk):
-    ficha = get_object_or_404(FichaAtencion, pk=pk)
-    if not fichas_visibles(request.user).filter(pk=pk).exists():
+def ficha_visible(request, pk, qs=None):
+    ficha = get_object_or_404(qs if qs is not None else FichaAtencion.objects.all(), pk=pk)
+    # Quien ve todas las fichas no necesita la segunda consulta.
+    if not request.user.ve_todos_los_clientes and not fichas_visibles(request.user).filter(pk=pk).exists():
         raise PermissionDenied("Esta ficha no te corresponde.")
     return ficha
 
@@ -46,7 +47,8 @@ def lista(request):
         datos["desde"] = datos["hasta"] = timezone.localdate().isoformat()
     form = FiltroFichasForm(datos or None)
     qs = (fichas_visibles(request.user).select_related("cliente", "estado", "abierta_por")
-          .prefetch_related("servicios__servicio", "servicios__peluquero"))
+          .prefetch_related(Prefetch("servicios", queryset=DetalleAtencionServicio.objects
+                                     .select_related("servicio", "peluquero"))))
     if form.is_valid():
         d = form.cleaned_data
         if d["desde"]:
@@ -98,12 +100,17 @@ def nueva(request):
 
 @login_required
 def detalle(request, pk):
-    ficha = ficha_visible(request, pk)
-    servicios = (ficha.servicios.select_related("servicio__tipo", "peluquero", "tratamiento_origen")
-                 .prefetch_related("insumos__insumo"))
+    # Todo lo de la ficha se lee en pocas consultas: la base está lejos y cada consulta cuesta ~90 ms.
+    servicios_qs = (DetalleAtencionServicio.objects
+                    .select_related("servicio__tipo", "peluquero", "tratamiento_origen")
+                    .prefetch_related(Prefetch("insumos", queryset=DetalleFichaInsumo.objects.select_related("insumo"))))
+    qs = (FichaAtencion.objects
+          .select_related("estado", "cliente__estilista_fijo", "abierta_por", "validada_por", "modificado_por")
+          .prefetch_related(Prefetch("servicios", queryset=servicios_qs)))
+    ficha = ficha_visible(request, pk, qs)
     u = request.user
     ctx = {
-        "f": ficha, "servicios": _con_aviso(servicios),
+        "f": ficha, "servicios": _con_aviso(ficha.servicios.all()),
         "puede_editar": ficha.editable and (u.tiene_privilegio("abrir_fichas")),
         "historial": ficha.historial.select_related("estado", "estado_anterior", "usuario"),
         "versiones": ficha.versiones.select_related("usuario"),

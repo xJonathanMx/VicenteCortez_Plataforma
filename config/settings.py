@@ -77,6 +77,8 @@ DATABASES = {
         ssl_require=env_bool("DB_SSL", False),
     )
 }
+# El pooler de Supabase no garantiza cursores del lado del servidor, y cada uno suma idas y vueltas a la base.
+DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = True
 
 AUTH_USER_MODEL = "core.Usuario"
 AUTHENTICATION_BACKENDS = ["core.backends.RunBackend"]

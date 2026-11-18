@@ -275,7 +275,33 @@ document.querySelectorAll('[data-run]').forEach(function (input) {
     revisar();
   }
 
+  // Los avisos (éxito o error) aparecen bajo el formulario que se envió, no arriba de la página.
+  function avisosJuntoAlBoton() {
+    var CLAVE = "vc-ultimo-formulario";
+    document.addEventListener("submit", function (e) {
+      var f = e.target;
+      if (!(f instanceof HTMLFormElement) || (f.method || "").toLowerCase() !== "post") return;
+      var dato = { ruta: location.pathname, id: f.id || "",
+                   indice: Array.prototype.indexOf.call(document.querySelectorAll("form"), f) };
+      try { sessionStorage.setItem(CLAVE, JSON.stringify(dato)); } catch (err) { /* sin almacenamiento */ }
+    }, true);
+
+    var guardado = null;
+    try { guardado = JSON.parse(sessionStorage.getItem(CLAVE) || "null"); sessionStorage.removeItem(CLAVE); }
+    catch (err) { guardado = null; }
+    var avisos = document.querySelector("[data-avisos]");
+    if (!avisos || !guardado || guardado.ruta !== location.pathname) return;
+    var f = (guardado.id && document.getElementById(guardado.id)) || document.querySelectorAll("form")[guardado.indice];
+    if (!f || f.contains(avisos)) return;
+    var plegado = f.closest("details");
+    if (plegado) plegado.open = true;
+    if (!f.offsetParent) return;  // formulario oculto: el aviso se queda arriba
+    avisos.classList.add("avisos-junto");
+    f.insertAdjacentElement("afterend", avisos);
+    avisos.scrollIntoView({ block: "center" });
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
-    iconos(); tema(); guardables(); incentivos(); menu(); cronometros(); confirmaciones(); validarAntes(); unEnvio(); sugerencias(); encabezadoFijo(); desplegablesMovil();
+    iconos(); tema(); guardables(); incentivos(); menu(); cronometros(); confirmaciones(); validarAntes(); unEnvio(); sugerencias(); encabezadoFijo(); desplegablesMovil(); avisosJuntoAlBoton();
   });
 })();

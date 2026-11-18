@@ -66,12 +66,14 @@
         <i data-lucide="moon" class="icono-claro"></i><i data-lucide="sun" class="icono-oscuro"></i></button>
       </div>
     </div>
+    {% if messages %}<div class="avisos-pagina" data-avisos>
     {% for m in messages %}
       <div class="aviso {{ m.tags }}" role="status">
         <i data-lucide="{% if m.tags == 'error' %}circle-alert{% elif m.tags == 'warning' %}triangle-alert{% else %}circle-check{% endif %}"></i>
         <div>{{ m }}</div>
       </div>
     {% endfor %}
+    </div>{% endif %}
     {% block contenido %}{% endblock %}
   </main>
 </div>

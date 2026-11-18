@@ -283,6 +283,8 @@ a { color: var(--tinta); }
 .aviso.success { color: var(--ok); }
 .aviso.error { color: var(--error); }
 .aviso.warning { color: var(--alerta); }
+.avisos-junto { margin-top: 14px; }
+.avisos-junto .aviso:last-child { margin-bottom: 0; }
 
 /* ---------- pestañas ---------- */
 .pestanas { display: inline-flex; gap: 4px; padding: 5px; border-radius: 16px; box-shadow: var(--hundido-s); margin-bottom: 22px; flex-wrap: wrap; }

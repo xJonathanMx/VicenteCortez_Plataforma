@@ -849,6 +849,9 @@ class ConfiguracionCorreo(models.Model):
     usuario = models.CharField("correo de la cuenta", max_length=120, blank=True)
     clave_cifrada = models.TextField("contraseña (cifrada)", blank=True)
     remitente_nombre = models.CharField("nombre del remitente", max_length=80, default="Peluquería Vicente Cortez")
+    correo_remitente = models.EmailField("correo remitente", max_length=120, blank=True,
+                                         help_text="Solo si el proveedor entrega un usuario distinto del correo "
+                                                   "(ej. Brevo). Vacío = el correo de la cuenta.")
     responder_a = models.EmailField("responder a", max_length=120, blank=True,
                                     help_text="Si el cliente contesta un correo, la respuesta llega a esta dirección "
                                               "(ej. el @live de la peluquería). Vacío = a la misma cuenta.")
@@ -870,7 +873,8 @@ class ConfiguracionCorreo(models.Model):
 
     @property
     def remitente(self):
-        return f"{self.remitente_nombre} <{self.usuario}>" if self.usuario else ""
+        correo = self.correo_remitente or self.usuario
+        return f"{self.remitente_nombre} <{correo}>" if correo else ""
 
     def fijar_clave(self, clave):
         from core.correo import cifrar

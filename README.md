@@ -38,7 +38,7 @@ Docentes: Mabel Herrera y Juan Pablo Mellado.
 | Correo              | SMTP (Gmail u Outlook, configurable desde la plataforma)     |
 | Reportes            | openpyxl (Excel) y ReportLab (PDF)                           |
 | Despliegue          | Docker y Docker Compose                                      |
-| Pruebas             | Django TestCase (94 pruebas)                                 |
+| Pruebas             | Django TestCase (109 pruebas)                                |
 
 ## Arquitectura
 

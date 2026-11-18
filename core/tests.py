@@ -632,6 +632,29 @@ class ConfiguracionCorreoTests(Base):
                          ("smtp.gmail.com", "peluqueria@gmail.com", "secreta", True))
         self.assertIn("peluqueria@gmail.com", m.from_email)
 
+    def test_brevo_usuario_smtp_distinto_del_remitente(self):
+        """Brevo entrega un usuario xxxx@smtp-brevo.com; el correo sale desde el remitente verificado."""
+        from unittest import mock
+        from django.core.mail import EmailMessage
+        from core.correo import BackendConfigurable
+        from core.models import ConfiguracionCorreo
+        self.entrar(self.admin)
+        self.client.post(reverse("seguimiento:canales"), {
+            "guardar_correo": "1", "correo-proveedor": "brevo", "correo-usuario": "c3ea3e001@smtp-brevo.com",
+            "correo-clave": "clave-smtp", "correo-remitente_nombre": "Peluquería Vicente Cortez",
+            "correo-correo_remitente": "peluqueria@hotmail.com", "correo-servidor": "smtp-relay.brevo.com",
+            "correo-puerto": "2525", "correo-seguridad": "tls", "correo-activo": "on"})
+        conf = ConfiguracionCorreo.actual()
+        self.assertEqual((conf.usuario, conf.correo_remitente, conf.puerto),
+                         ("c3ea3e001@smtp-brevo.com", "peluqueria@hotmail.com", 2525))
+        with mock.patch("core.correo.SMTPBackend") as smtp:
+            smtp.return_value.send_messages.return_value = 1
+            m = EmailMessage("Hola", "Cuerpo", None, ["cliente@correo.cl"])
+            BackendConfigurable().send_messages([m])
+        self.assertEqual(smtp.call_args.kwargs["username"], "c3ea3e001@smtp-brevo.com")
+        self.assertEqual(smtp.call_args.kwargs["port"], 2525)
+        self.assertEqual(m.from_email, "Peluquería Vicente Cortez <peluqueria@hotmail.com>")
+
     def test_apagado_va_a_consola(self):
         from unittest import mock
         from core.correo import BackendConfigurable

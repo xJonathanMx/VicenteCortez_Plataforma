@@ -245,8 +245,9 @@ class CP11ContrasenasYRepoTests(Base):
             self.skipTest("git no disponible")
         self.assertFalse([a for a in archivos if re.search(r"(^|/)\.env$|\.sqlite3$|\.pem$|\.key$", a)])
         patrones = [
-            # cadena de conexión con clave real (se ignoran marcadores como CLAVE, PASSWORD o [TU-CLAVE])
-            r"postgres(ql)?://[^:\s]+:(?![A-Z_\[\]-]+@)[^@\s]{4,}@",
+            # cadena de conexión con clave real (se ignoran marcadores como CLAVE, PASSWORD o [TU-CLAVE]
+            # y variables ${...} de docker-compose)
+            r"postgres(ql)?://[^:\s]+:(?![A-Z_\[\]-]+@)(?![^@\s]*\$\{)[^@\s]{4,}@",
             r"SECRET_KEY\s*=\s*['\"](?!dev-inseguro)[^'\"]{20,}",   # clave de Django fija
             r"EMAIL_HOST_PASSWORD\s*=\s*['\"][^'\"]+['\"]",
             r"eyJhbGciOi[A-Za-z0-9_-]{20,}",                          # JWT / clave de Supabase

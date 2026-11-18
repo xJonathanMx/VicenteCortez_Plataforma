@@ -37,3 +37,5 @@ package-lock.json
 
 # Metadatos y archivos basura ocultos generados automáticamente por el sistema operativo macOS
 .DS_Store
+# Respaldos locales de la base
+respaldos_db/

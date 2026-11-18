@@ -10,10 +10,11 @@ from django.views.decorators.http import require_POST
 
 from core import rut as rututil
 from core.forms import MotivoForm
-from core.models import Cliente, ConsultaHistorial, HistoricoEstadoCliente, TipoEstado
+from core.models import CanalComunicacion, Cliente, ConsultaHistorial, EnvioMensaje, HistoricoEstadoCliente, TipoEstado
 from core.permisos import privilegio_requerido
+from seguimiento import servicios as ss
 
-from .forms import ClienteForm, EstilistaForm
+from .forms import ClienteForm, CorreoClienteForm, EstilistaForm
 
 
 def buscar_clientes(q, usuario):
@@ -108,6 +109,61 @@ def editar(request, run):
         return redirect("clientes:detalle", run=run)
     return render(request, "form.html", {"form": form, "titulo": f"Editar a {cliente.nombre_completo}",
                                          "volver": reverse("clientes:detalle", args=[run])})
+
+
+def borrador_correo(cliente, usuario, ficha=None):
+    """Texto inicial del correo manual: nombra los servicios de la ficha (o de la última) para escribir los cuidados."""
+    ultima = ficha or (cliente.fichas.exclude(estado="anulada").order_by("-fecha_hora_inicio")
+                       .prefetch_related("servicios__servicio").first())
+    nombres = [s.servicio.nombre.lower() for s in ultima.servicios.all()] if ultima else []
+    servicio = " y ".join(nombres[:2])
+    asunto = f"Cuidados para tu {servicio}" if servicio else "Un mensaje de Peluquería Vicente Cortez"
+    intro = (f"Te escribimos con algunas recomendaciones para cuidar tu {servicio}:" if servicio
+             else "Te escribimos desde Peluquería Vicente Cortez:")
+    mensaje = (f"Hola {cliente.nombre},\n\n{intro}\n\n- \n- \n- \n\n"
+               f"Si tienes dudas, responde este correo o escríbenos.\n\n"
+               f"{usuario.nombre_corto}\nPeluquería Vicente Cortez")
+    return {"asunto": asunto, "mensaje": mensaje}
+
+
+@login_required
+def correo(request, run):
+    """Correo escrito a mano y enviado solo a este cliente (por ejemplo, los cuidados de un tratamiento)."""
+    cliente = cliente_visible(request, run)
+    # Desde una ficha (?ficha=N): el borrador usa sus servicios y al terminar se vuelve a la ficha.
+    ficha = None
+    if (request.GET.get("ficha") or "").isdigit():
+        ficha = cliente.fichas.filter(pk=request.GET["ficha"]).first()
+    volver = reverse("fichas:detalle", args=[ficha.pk]) if ficha else reverse("clientes:detalle", args=[run])
+    if not cliente.correo:
+        messages.error(request, "Este cliente no tiene correo registrado. Agrégalo en «Editar datos».")
+        return redirect(volver)
+    form = CorreoClienteForm(request.POST or None, initial=borrador_correo(cliente, request.user, ficha))
+    if request.method == "POST" and form.is_valid():
+        canal = CanalComunicacion.objects.filter(codigo="email").first()
+        if canal is None:
+            messages.error(request, "El canal de correo no está configurado.")
+            return redirect(volver)
+        try:
+            destino, simulado = ss.enviar(canal, cliente, form.cleaned_data["asunto"], form.cleaned_data["mensaje"])
+        except ss.ErrorEnvio as e:
+            EnvioMensaje.objects.create(canal=canal, destino=cliente.correo, exitoso=False, error=str(e)[:255])
+            messages.error(request, f"No se pudo enviar el correo: {e}")
+            return render(request, "form.html", contexto_correo(form, cliente, volver))
+        EnvioMensaje.objects.create(canal=canal, destino=destino, exitoso=True, simulado=simulado)
+        if simulado:
+            messages.warning(request, "El correo se generó, pero el sistema está en modo prueba: no llega a la bandeja. "
+                                      "Actívalo en Valoraciones › Canales y mensajes.")
+        else:
+            messages.success(request, f"Correo enviado a {destino}.")
+        return redirect(volver)
+    return render(request, "form.html", contexto_correo(form, cliente, volver))
+
+
+def contexto_correo(form, cliente, volver):
+    return {"form": form, "titulo": f"Enviar correo a {cliente.nombre_completo}", "boton": "Enviar correo",
+            "subtitulo": f"Se envía solo a {cliente.correo}. Nadie más lo recibe ni ve la dirección.",
+            "volver": volver}
 
 
 @privilegio_requerido("asignar_peluquero")

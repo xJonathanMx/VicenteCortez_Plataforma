@@ -43,6 +43,7 @@ urls_clientes = [
     path("nuevo/", clientes.nuevo, name="nuevo"),
     path("<str:run>/", clientes.detalle, name="detalle"),
     path("<str:run>/editar/", clientes.editar, name="editar"),
+    path("<str:run>/correo/", clientes.correo, name="correo"),
     path("<str:run>/estilista/", clientes.estilista, name="estilista"),
     path("<str:run>/estado/", clientes.estado, name="estado"),
 ]

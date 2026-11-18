@@ -24,6 +24,11 @@
           <div class="secundario">{{ f.cliente.run_formateado }}{% if f.cliente.estilista_fijo %}, estilista fijo {{ f.cliente.estilista_fijo.nombre_corto }}{% endif %}</div></div>
         <i data-lucide="chevron-right" class="text-apagado"></i>
       </a>
+      {% if f.cliente.correo %}
+        <a class="btn btn-relieve btn-sm mt-3" href="{% url 'clientes:correo' f.cliente.run %}?ficha={{ f.pk }}"><i data-lucide="mail"></i>Enviar correo (cuidados)</a>
+      {% else %}
+        <p class="small text-apagado mt-3 mb-0">Sin correo registrado: no se le pueden enviar cuidados ni valoraciones.</p>
+      {% endif %}
     {% else %}
       <p class="mb-2"><strong>{{ f.nombre_cliente }}</strong> <span class="text-apagado">(sin vincular)</span></p>
       <form method="post" action="{% url 'fichas:vincular' f.pk %}" class="d-flex gap-2 align-items-end" novalidate>{% csrf_token %}

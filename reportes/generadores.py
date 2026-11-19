@@ -109,7 +109,8 @@ def r_calidad(f):
 def r_recordatorios(f):
     qs = EnvioMensaje.objects.filter(fecha__range=rango(f), recordatorio__isnull=False)
     filas = []
-    for canal in qs.values_list("canal__nombre", flat=True).distinct():
+    # order_by() vacío: si no, el orden por fecha del modelo entra al DISTINCT y repite el canal.
+    for canal in qs.order_by().values_list("canal__nombre", flat=True).distinct():
         c = qs.filter(canal__nombre=canal)
         total, ok = c.count(), c.filter(exitoso=True).count()
         filas.append([canal, total, ok, total - ok, f"{pct(ok, total)}%"])
